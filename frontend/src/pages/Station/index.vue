@@ -558,17 +558,8 @@
 				<request-song v-if="modals.requestSong" />
 				<edit-playlist v-if="modals.editPlaylist" />
 				<create-playlist v-if="modals.createPlaylist" />
-				<manage-station-owen
-					v-if="
-						modals.manageStation && manageStationVersion === 'owen'
-					"
-					:station-id="station._id"
-					sector="station"
-				/>
-				<manage-station-kris
-					v-if="
-						modals.manageStation && manageStationVersion === 'kris'
-					"
+				<manage-station
+					v-if="modals.manageStation"
 					:station-id="station._id"
 					sector="station"
 				/>
@@ -648,10 +639,8 @@ export default {
 		RequestSong: () => import("@/components/modals/RequestSong.vue"),
 		EditPlaylist: () => import("@/components/modals/EditPlaylist"),
 		CreatePlaylist: () => import("@/components/modals/CreatePlaylist.vue"),
-		ManageStationOwen: () =>
-			import("@/components/modals/ManageStationOwen/index.vue"),
-		ManageStationKris: () =>
-			import("@/components/modals/ManageStationKris/index.vue"),
+		ManageStation: () =>
+			import("@/components/modals/ManageStation/index.vue"),
 		Report: () => import("@/components/modals/Report.vue"),
 		Z404,
 		FloatingBox,
