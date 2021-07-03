@@ -36,7 +36,7 @@
 						:playlist="playlist"
 						:show-owner="true"
 					>
-						<div class="icons-group" slot="actions">
+						<template #actions>
 							<confirm
 								v-if="isOwnerOrAdmin()"
 								@confirm="deselectPlaylist(playlist._id)"
@@ -80,7 +80,7 @@
 								v-tippy
 								>visibility</i
 							>
-						</div>
+						</template>
 					</playlist-item>
 				</div>
 				<p v-else class="has-text-centered scrollable-list">
@@ -114,7 +114,7 @@
 						:playlist="playlist"
 						:show-owner="true"
 					>
-						<div class="icons-group" slot="actions">
+						<template #actions>
 							<i
 								v-if="isExcluded(playlist._id)"
 								class="material-icons stop-icon"
@@ -191,7 +191,7 @@
 								v-tippy
 								>visibility</i
 							>
-						</div>
+						</template>
 					</playlist-item>
 					<button
 						v-if="resultsLeftCount > 0"
@@ -214,96 +214,101 @@
 				>
 					Create new playlist
 				</button>
-				<draggable
+				<div
 					class="menu-list scrollable-list"
 					v-if="playlists.length > 0"
-					v-model="playlists"
-					v-bind="dragOptions"
-					@start="drag = true"
-					@end="drag = false"
-					@change="savePlaylistOrder"
 				>
-					<transition-group
-						type="transition"
-						:name="!drag ? 'draggable-list-transition' : null"
+					<draggable
+						tag="transition-group"
+						:component-data="{
+							name: !drag ? 'draggable-list-transition' : null
+						}"
+						item-key="_id"
+						v-model="playlists"
+						v-bind="dragOptions"
+						@start="drag = true"
+						@end="drag = false"
+						@change="savePlaylistOrder"
 					>
-						<playlist-item
-							class="item-draggable"
-							v-for="playlist in playlists"
-							:key="playlist._id"
-							:playlist="playlist"
-						>
-							<div slot="actions">
-								<i
-									v-if="isExcluded(playlist._id)"
-									class="material-icons stop-icon"
-									content="This playlist is blacklisted in this station"
-									v-tippy="{ theme: 'info' }"
-									>play_disabled</i
-								>
-								<i
-									v-if="
-										station.type === 'community' &&
-											(isOwnerOrAdmin() ||
-												station.partyMode) &&
-											!isSelected(playlist._id) &&
-											!isExcluded(playlist._id)
-									"
-									@click="selectPlaylist(playlist)"
-									class="material-icons play-icon"
-									:content="
-										station.partyMode
-											? 'Request songs from this playlist'
-											: 'Play songs from this playlist'
-									"
-									v-tippy
-									>play_arrow</i
-								>
-								<confirm
-									v-if="
-										station.type === 'community' &&
-											(isOwnerOrAdmin() ||
-												station.partyMode) &&
-											isSelected(playlist._id)
-									"
-									@confirm="deselectPlaylist(playlist._id)"
-								>
+						<template #item="{element}">
+							<playlist-item
+								class="item-draggable"
+								:playlist="element"
+							>
+								<template #actions>
 									<i
+										v-if="isExcluded(element._id)"
 										class="material-icons stop-icon"
+										content="This playlist is blacklisted in this station"
+										v-tippy="{ theme: 'info' }"
+										>play_disabled</i
+									>
+									<i
+										v-if="
+											station.type === 'community' &&
+												(isOwnerOrAdmin() ||
+													station.partyMode) &&
+												!isSelected(element._id) &&
+												!isExcluded(element._id)
+										"
+										@click="selectPlaylist(element)"
+										class="material-icons play-icon"
 										:content="
 											station.partyMode
-												? 'Stop requesting songs from this playlist'
-												: 'Stop playing songs from this playlist'
+												? 'Request songs from this playlist'
+												: 'Play songs from this playlist'
 										"
 										v-tippy
-										>stop</i
+										>play_arrow</i
 									>
-								</confirm>
-								<confirm
-									v-if="
-										isOwnerOrAdmin() &&
-											!isExcluded(playlist._id)
-									"
-									@confirm="blacklistPlaylist(playlist._id)"
-								>
+									<confirm
+										v-if="
+											station.type === 'community' &&
+												(isOwnerOrAdmin() ||
+													station.partyMode) &&
+												isSelected(element._id)
+										"
+										@confirm="deselectPlaylist(element._id)"
+									>
+										<i
+											class="material-icons stop-icon"
+											:content="
+												station.partyMode
+													? 'Stop requesting songs from this playlist'
+													: 'Stop playing songs from this playlist'
+											"
+											v-tippy
+											>stop</i
+										>
+									</confirm>
+									<confirm
+										v-if="
+											isOwnerOrAdmin() &&
+												!isExcluded(element._id)
+										"
+										@confirm="
+											blacklistPlaylist(element._id)
+										"
+									>
+										<i
+											class="material-icons stop-icon"
+											content="Blacklist Playlist"
+											v-tippy
+											>block</i
+										>
+									</confirm>
 									<i
-										class="material-icons stop-icon"
-										content="Blacklist Playlist"
+										@click="showPlaylist(element._id)"
+										class="material-icons edit-icon"
+										content="Edit Playlist"
 										v-tippy
-										>block</i
+										>edit</i
 									>
-								</confirm>
-								<i
-									@click="showPlaylist(playlist._id)"
-									class="material-icons edit-icon"
-									content="Edit Playlist"
-									v-tippy
-									>edit</i
-								>
-							</div>
-						</playlist-item>
-					</transition-group>
-				</draggable>
+								</template>
+							</playlist-item>
+						</template>
+					</draggable>
+				</div>
 				<p v-else class="has-text-centered scrollable-list">
 					You don't have any playlists!
 				</p>

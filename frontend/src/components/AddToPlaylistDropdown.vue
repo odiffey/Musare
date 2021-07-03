@@ -1,10 +1,11 @@
 <template>
 	<tippy
 		class="addToPlaylistDropdown"
-		touch="true"
-		interactive="true"
+		:touch="true"
+		:interactive="true"
 		:placement="placement"
 		theme="addToPlaylist"
+		ref="dropdown"
 		trigger="click"
 		append-to="parent"
 		@show="
@@ -18,37 +19,48 @@
 			}
 		"
 	>
-		<template #trigger>
-			<slot name="button" />
-		</template>
+		<slot name="button" ref="trigger" />
 
-		<div class="nav-dropdown-items" v-if="playlists.length > 0">
+		<template #content>
+			<div class="nav-dropdown-items" v-if="playlists.length > 0">
+				<button
+					class="nav-item"
+					href="#"
+					v-for="(playlist, index) in playlists"
+					:key="playlist._id"
+					@click.prevent="toggleSongInPlaylist(index)"
+					:title="playlist.displayName"
+				>
+					<p class="control is-expanded checkbox-control">
+						<label class="switch">
+							<input
+								type="checkbox"
+								:id="index"
+								:checked="hasSong(playlist)"
+								@click="toggleSongInPlaylist(index)"
+							/>
+							<span class="slider round"></span>
+						</label>
+						<label :for="index">
+							<span></span>
+							<p>{{ playlist.displayName }}</p>
+						</label>
+					</p>
+				</button>
+			</div>
+			<p v-else>You haven't created any playlists.</p>
+
 			<button
-				class="nav-item"
-				href="#"
-				v-for="(playlist, index) in playlists"
-				:key="playlist._id"
-				@click.prevent="toggleSongInPlaylist(index)"
-				:title="playlist.displayName"
+				id="create-playlist"
+				class="button is-primary"
+				@click="createPlaylist()"
 			>
-				<p class="control is-expanded checkbox-control">
-					<label class="switch">
-						<input
-							type="checkbox"
-							:id="index"
-							:checked="hasSong(playlist)"
-							@click="toggleSongInPlaylist(index)"
-						/>
-						<span class="slider round"></span>
-					</label>
-					<label :for="index">
-						<span></span>
-						<p>{{ playlist.displayName }}</p>
-					</label>
-				</p>
+				<i class="material-icons icon-with-button">
+					edit
+				</i>
+				Create Playlist
 			</button>
-		</div>
-		<p v-else>You haven't created any playlists.</p>
+		</template>
 	</tippy>
 </template>
 
@@ -74,39 +86,29 @@ export default {
 		...mapState({
 			fetchedPlaylists: state => state.user.playlists.fetchedPlaylists
 		}),
-		playlists: {
-			get() {
-				return this.$store.state.user.playlists.playlists.filter(
-					playlist => playlist.isUserModifiable
-				);
-			},
-			set(playlists) {
-				this.$store.commit("user/playlists/setPlaylists", playlists);
-			}
+		playlists() {
+			return this.$store.state.user.playlists.playlists.filter(
+				playlist => playlist.isUserModifiable
+			);
 		}
 	},
 	mounted() {
 		if (!this.fetchedPlaylists)
-			this.socket.dispatch("playlists.indexMyPlaylists", false, res => {
+			this.socket.dispatch("playlists.indexMyPlaylists", true, res => {
 				if (res.status === "success")
-					this.setPlaylists(res.data.playlists);
+					if (!this.fetchedPlaylists)
+						this.setPlaylists(res.data.playlists);
 			});
 
 		this.socket.on(
 			"event:playlist.created",
-			res => this.playlists.push(res.data.playlist),
+			res => this.addPlaylist(res.data.playlist),
 			{ replaceable: true }
 		);
 
 		this.socket.on(
 			"event:playlist.deleted",
-			res => {
-				this.playlists.forEach((playlist, index) => {
-					if (playlist._id === res.data.playlistId) {
-						this.playlists.splice(index, 1);
-					}
-				});
-			},
+			res => this.removePlaylist(res.data.playlistId),
 			{ replaceable: true }
 		);
 
@@ -149,7 +151,22 @@ export default {
 				-1
 			);
 		},
-		...mapActions("user/playlists", ["setPlaylists"])
+		createPlaylist() {
+			this.$refs.dropdown.tippy.setProps({
+				zIndex: 0,
+				hideOnClick: false
+			});
+
+			window.addToPlaylistDropdown = this.$refs.dropdown;
+
+			this.openModal("createPlaylist");
+		},
+		...mapActions("user/playlists", [
+			"setPlaylists",
+			"addPlaylist",
+			"removePlaylist"
+		]),
+		...mapActions("modalVisibility", ["openModal"])
 	}
 };
 </script>
@@ -157,5 +174,13 @@ export default {
 <style lang="scss" scoped>
 .nav-dropdown-items button .control {
 	margin-bottom: 0 !important;
+}
+
+#create-playlist {
+	margin-top: 10px;
+
+	i {
+		color: #fff;
+	}
 }
 </style>

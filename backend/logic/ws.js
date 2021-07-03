@@ -326,6 +326,27 @@ class _WSModule extends CoreClass {
 	}
 
 	/**
+	 * Emits arguments to any sockets that are in specified rooms
+	 *
+	 * @param {object} payload - object that contains the payload
+	 * @param {Array} payload.rooms - array of strings with the name of each room e.g. ["station-page", "song.1234"]
+	 * @param {object} payload.args - any arguments to be emitted to the sockets in the specific room
+	 * @returns {Promise} - returns promise (reject, resolve)
+	 */
+	async EMIT_TO_ROOMS(payload) {
+		return new Promise(resolve =>
+			async.each(
+				payload.rooms,
+				(room, next) => {
+					WSModule.runJob("EMIT_TO_ROOM", { room, args: payload.args });
+					return next();
+				},
+				() => resolve()
+			)
+		);
+	}
+
+	/**
 	 * Allows a socket to join a 'song' room
 	 *
 	 * @param {object} payload - object that contains the payload

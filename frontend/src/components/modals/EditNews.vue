@@ -3,7 +3,7 @@
 		class="edit-news-modal"
 		:title="newsId ? 'Edit News' : 'Create News'"
 	>
-		<div slot="body">
+		<template #body>
 			<div id="markdown-editor-and-preview">
 				<div class="column">
 					<p><strong>Markdown</strong></p>
@@ -18,42 +18,44 @@
 					></div>
 				</div>
 			</div>
-		</div>
-		<div slot="footer">
-			<p class="control select">
-				<select v-model="status">
-					<option value="draft">Draft</option>
-					<option value="published" selected>Publish</option>
-				</select>
-			</p>
+		</template>
+		<template #footer>
+			<div>
+				<p class="control select">
+					<select v-model="status">
+						<option value="draft">Draft</option>
+						<option value="published" selected>Publish</option>
+					</select>
+				</p>
 
-			<save-button
-				ref="saveButton"
-				v-if="newsId"
-				@clicked="newsId ? update(false) : create(false)"
-			/>
+				<save-button
+					ref="saveButton"
+					v-if="newsId"
+					@clicked="newsId ? update(false) : create(false)"
+				/>
 
-			<save-button
-				ref="saveAndCloseButton"
-				type="save-and-close"
-				@clicked="newsId ? update(true) : create(true)"
-			/>
-			<div class="right" v-if="createdAt > 0">
-				<span>
-					By
-					<user-id-to-username
-						:user-id="createdBy"
-						:alt="createdBy"
-						:link="true"/></span
-				><span :title="new Date(createdAt)">
-					{{
-						formatDistance(createdAt, new Date(), {
-							addSuffix: true
-						})
-					}}
-				</span>
+				<save-button
+					ref="saveAndCloseButton"
+					type="save-and-close"
+					@clicked="newsId ? update(true) : create(true)"
+				/>
+				<div class="right" v-if="createdAt > 0">
+					<span>
+						By
+						<user-id-to-username
+							:user-id="createdBy"
+							:alt="createdBy"
+							:link="true"/></span
+					><span :title="new Date(createdAt)">
+						{{
+							formatDistance(createdAt, new Date(), {
+								addSuffix: true
+							})
+						}}
+					</span>
+				</div>
 			</div>
-		</div>
+		</template>
 	</modal>
 </template>
 

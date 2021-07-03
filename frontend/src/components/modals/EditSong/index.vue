@@ -1,7 +1,7 @@
 <template>
 	<div>
 		<modal title="Edit Song" class="song-modal">
-			<div slot="body">
+			<template #body>
 				<div class="left-section">
 					<div class="top-section">
 						<div class="player-section">
@@ -325,65 +325,93 @@
 							>
 								Reports ({{ reports.length }})
 							</button>
+							<button
+								class="button is-default"
+								:class="{ selected: tab === 'youtube' }"
+								ref="youtube-tab"
+								@click="showTab('youtube')"
+							>
+								YouTube
+							</button>
 						</div>
 						<discogs class="tab" v-show="tab === 'discogs'" />
 						<reports class="tab" v-show="tab === 'reports'" />
+						<youtube class="tab" v-show="tab === 'youtube'" />
 					</div>
 				</div>
-			</div>
-			<div slot="footer">
-				<save-button ref="saveButton" @clicked="save(song, false)" />
-				<save-button
-					ref="saveAndCloseButton"
-					type="save-and-close"
-					@clicked="save(song, true)"
-				/>
-				<div class="right">
+			</template>
+			<template #footer>
+				<div>
+					<save-button
+						ref="saveButton"
+						@clicked="save(song, false, false)"
+					/>
+					<save-button
+						ref="saveAndCloseButton"
+						type="save-and-close"
+						@clicked="save(song, false, true)"
+					/>
 					<button
-						v-if="song.status !== 'verified'"
-						class="button is-success"
-						@click="verify(song._id)"
-						content="Verify Song"
-						v-tippy
+						class="button is-primary"
+						@click="save(song, true, true)"
 					>
-						<i class="material-icons">check_circle</i>
+						Save, verify and close
 					</button>
-					<confirm
-						v-if="song.status === 'verified'"
-						placement="left"
-						@confirm="unverify(song._id)"
+
+					<button
+						class="button is-danger"
+						@click="stopEditingSongs()"
+						v-if="modals.importAlbum && editingSongs"
 					>
+						Stop editing songs
+					</button>
+
+					<div class="right">
 						<button
-							class="button is-danger"
-							content="Unverify Song"
+							v-if="song.status !== 'verified'"
+							class="button is-success"
+							@click="verify(song._id)"
+							content="Verify Song"
 							v-tippy
 						>
-							<i class="material-icons">cancel</i>
+							<i class="material-icons">check_circle</i>
 						</button>
-					</confirm>
-					<confirm
-						v-if="song.status !== 'hidden'"
-						placement="left"
-						@confirm="hide(song._id)"
-					>
+						<confirm
+							v-if="song.status === 'verified'"
+							placement="left"
+							@confirm="unverify(song._id)"
+						>
+							<button
+								class="button is-danger"
+								content="Unverify Song"
+								v-tippy
+							>
+								<i class="material-icons">cancel</i>
+							</button>
+						</confirm>
+						<confirm
+							v-if="song.status !== 'hidden'"
+							placement="left"
+							@confirm="hide(song._id)"
+						>
+							<button
+								class="button is-danger"
+								content="Hide Song"
+								v-tippy
+							>
+								<i class="material-icons">visibility_off</i>
+							</button>
+						</confirm>
 						<button
-							class="button is-danger"
-							content="Hide Song"
+							v-if="song.status === 'hidden'"
+							class="button is-success"
+							@click="unhide(song._id)"
+							content="Unhide Song"
 							v-tippy
 						>
-							<i class="material-icons">visibility_off</i>
+							<i class="material-icons">visibility</i>
 						</button>
-					</confirm>
-					<button
-						v-if="song.status === 'hidden'"
-						class="button is-success"
-						@click="unhide(song._id)"
-						content="Unhide Song"
-						v-tippy
-					>
-						<i class="material-icons">visibility</i>
-					</button>
-					<!-- <confirm placement="left" @confirm="remove(song._id)">
+						<!-- <confirm placement="left" @confirm="remove(song._id)">
 						<button
 							class="button is-danger"
 							content="Remove Song"
@@ -392,8 +420,9 @@
 							<i class="material-icons">delete</i>
 						</button>
 					</confirm> -->
+					</div>
 				</div>
-			</div>
+			</template>
 		</modal>
 		<floating-box id="genreHelper" ref="genreHelper">
 			<template #body>
@@ -429,11 +458,22 @@ import SaveButton from "../../SaveButton.vue";
 
 import Discogs from "./Tabs/Discogs.vue";
 import Reports from "./Tabs/Reports.vue";
+import Youtube from "./Tabs/Youtube.vue";
 
 export default {
-	components: { Modal, FloatingBox, SaveButton, Confirm, Discogs, Reports },
+	components: {
+		Modal,
+		FloatingBox,
+		SaveButton,
+		Confirm,
+		Discogs,
+		Reports,
+		Youtube
+	},
 	props: {
 		youtubeId: { type: String, default: null },
+		songId: { type: String, default: null },
+		discogsAlbum: { type: Object, default: null },
 		// songType: { type: String, default: null },
 		sector: { type: String, default: "admin" }
 	},
@@ -504,6 +544,9 @@ export default {
 			originalSong: state => state.originalSong,
 			reports: state => state.reports
 		}),
+		...mapState("modals/importAlbum", {
+			editingSongs: state => state.editingSongs
+		}),
 		...mapState("modalVisibility", {
 			modals: state => state.modals
 		}),
@@ -541,7 +584,9 @@ export default {
 				// this.song = { ...song };
 				// if (this.song.discogs === undefined)
 				// 	this.song.discogs = null;
-				this.editSong(song);
+				if (this.song.discogs)
+					this.editSong({ ...song, discogs: this.song.discogs });
+				else this.editSong(song);
 
 				this.songDataLoaded = true;
 
@@ -728,7 +773,8 @@ export default {
 		this.socket.on(
 			"event:admin.hiddenSong.created",
 			res => {
-				this.song.status = res.data.song.status;
+				if (res.data.song._id === this.song._id)
+					this.song.status = res.data.song.status;
 			},
 			{ modal: "editSong" }
 		);
@@ -736,7 +782,8 @@ export default {
 		this.socket.on(
 			"event:admin.unverifiedSong.created",
 			res => {
-				this.song.status = res.data.song.status;
+				if (res.data.song._id === this.song._id)
+					this.song.status = res.data.song.status;
 			},
 			{ modal: "editSong" }
 		);
@@ -744,38 +791,11 @@ export default {
 		this.socket.on(
 			"event:admin.verifiedSong.created",
 			res => {
-				this.song.status = res.data.song.status;
+				if (res.data.song._id === this.song._id)
+					this.song.status = res.data.song.status;
 			},
 			{ modal: "editSong" }
 		);
-
-		this.socket.on(
-			"event:admin.hiddenSong.deleted",
-			() => {
-				new Toast("The song you were editing was removed");
-				this.closeModal("editSong");
-			},
-			{ modal: "editSong" }
-		);
-
-		this.socket.on(
-			"event:admin.unverifiedSong.deleted",
-			() => {
-				new Toast("The song you were editing was removed");
-				this.closeModal("editSong");
-			},
-			{ modal: "editSong" }
-		);
-
-		this.socket.on(
-			"event:admin.verifiedSong.deleted",
-			() => {
-				new Toast("The song you were editing was removed");
-				this.closeModal("editSong");
-			},
-			{ modal: "editSong" }
-		);
-
 		keyboardShortcuts.registerShortcut("editSong.pauseResumeVideo", {
 			keyCode: 101,
 			preventDefault: true,
@@ -857,7 +877,7 @@ export default {
 			ctrl: true,
 			preventDefault: true,
 			handler: () => {
-				this.save(this.song, false);
+				this.save(this.song, false, false);
 			}
 		});
 
@@ -938,16 +958,13 @@ export default {
 
 		*/
 	},
-	beforeDestroy() {
+	beforeUnmount() {
+		this.video.player.stopVideo();
 		this.playerReady = false;
 		clearInterval(this.interval);
 		clearInterval(this.activityWatchVideoDataInterval);
 
-		this.socket.dispatch(
-			"apis.leaveRoom",
-			`edit-song.${this.song._id}`,
-			() => {}
-		);
+		this.socket.dispatch("apis.leaveRoom", `edit-song.${this.song._id}`);
 
 		const shortcutNames = [
 			"editSong.pauseResume",
@@ -971,7 +988,16 @@ export default {
 		});
 	},
 	methods: {
-		save(songToCopy, close) {
+		stopEditingSongs() {
+			this.updateEditingSongs(false);
+			this.closeModal("editSong");
+		},
+		importAlbum(result) {
+			this.selectDiscogsAlbum(result);
+			this.openModal("importAlbum");
+			this.closeModal("editSong");
+		},
+		save(songToCopy, verify, close) {
 			const song = JSON.parse(JSON.stringify(songToCopy));
 
 			let saveButtonRef = this.$refs.saveButton;
@@ -1128,6 +1154,7 @@ export default {
 					saveButtonRef.handleSuccessfulSave();
 				else saveButtonRef.handleFailedSave();
 
+				if (verify) this.verify(this.song._id);
 				if (close) this.closeModal("editSong");
 			});
 		},
@@ -1401,6 +1428,10 @@ export default {
 		// 		new Toast(res.message);
 		// 	});
 		// },
+		...mapActions("modals/importAlbum", [
+			"selectDiscogsAlbum",
+			"updateEditingSongs"
+		]),
 		...mapActions({
 			showTab(dispatch, payload) {
 				this.$refs[`${payload}-tab`].scrollIntoView();
@@ -1416,61 +1447,85 @@ export default {
 			"updateSongField",
 			"updateReports"
 		]),
-		...mapActions("modalVisibility", ["closeModal"])
+		...mapActions("modalVisibility", ["closeModal", "openModal"])
 	}
 };
 </script>
 
 <style lang="scss">
-.song-modal {
-	.modal-card-title {
-		text-align: center;
-		margin-left: 24px;
-	}
+// .song-modal {
+// 	.modal-card-title {
+// 		text-align: center;
+// 		margin-left: 24px;
+// 	}
 
-	.modal-card {
-		width: 1160px;
-		height: 100%;
+// 	.modal-card {
+// 		width: 1160px;
+// 		height: 100%;
 
-		.modal-card-body {
-			padding: 16px;
-		}
+// 		.modal-card-body {
+// 			padding: 16px;
+// 			display: flex;
+// 		}
 
-		.modal-card-foot {
-			.right {
-				display: flex;
-				margin-left: auto;
-				margin-right: 0;
-			}
-		}
-	}
-}
+// 		.modal-card-foot {
+// 			.right {
+// 				display: flex;
+// 				margin-left: auto;
+// 				margin-right: 0;
+
+// 				// button,
+// 				// a,
+// 				// span {
+// 				// 	&:not(:last-child) {
+// 				// 		margin-right: 5px;
+// 				// 	}
+// 				// }
+// 			}
+// 		}
+// 	}
+// }
 </style>
 
 <style lang="scss" scoped>
 .night-mode {
 	.edit-section,
-	.api-section,
-	.api-result,
-	.player-footer {
+	.player-footer,
+	#tabs-container {
 		background-color: var(--dark-grey-3) !important;
-	}
-
-	.api-result .tracks .track:hover,
-	.selected-discogs-info {
-		background-color: var(--dark-grey-2) !important;
-	}
-
-	.label,
-	p,
-	strong {
-		color: var(--light-grey-2);
 	}
 }
 
-.modal-card-body > div {
-	display: flex;
-	height: 100%;
+.song-modal {
+	&::v-deep {
+		.modal-card-title {
+			text-align: center;
+			margin-left: 24px;
+		}
+
+		.modal-card {
+			width: 1160px;
+			height: 100%;
+
+			.modal-card-body {
+				padding: 16px;
+				display: flex;
+
+				> div {
+					display: flex;
+					height: 100%;
+				}
+			}
+
+			.modal-card-foot {
+				.right {
+					display: flex;
+					margin-left: auto;
+					margin-right: 0;
+				}
+			}
+		}
+	}
 }
 
 .left-section {

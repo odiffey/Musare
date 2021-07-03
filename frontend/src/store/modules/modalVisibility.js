@@ -16,6 +16,7 @@ const state = {
 		editNews: false,
 		editUser: false,
 		editSong: false,
+		importAlbum: false,
 		viewReport: false,
 		viewPunishment: false
 	},
@@ -32,7 +33,6 @@ const actions = {
 			});
 
 		commit("closeModal", modal);
-		commit("closeCurrentModal");
 	},
 	openModal: ({ commit }, modal) => {
 		commit("openModal", modal);
@@ -45,6 +45,7 @@ const actions = {
 const mutations = {
 	closeModal(state, modal) {
 		state.modals[modal] = false;
+		if (state.currentlyActive[0] === modal) state.currentlyActive.shift();
 	},
 	openModal(state, modal) {
 		state.modals[modal] = true;

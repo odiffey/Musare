@@ -135,11 +135,21 @@ export default {
 		this.socket.on("keep.event:user.preferences.updated", res => {
 			const { preferences } = res.data;
 
-			this.localNightmode = preferences.nightmode;
-			this.localAutoSkipDisliked = preferences.autoSkipDisliked;
-			this.localActivityLogPublic = preferences.activityLogPublic;
-			this.localAnonymousSongRequests = preferences.anonymousSongRequests;
-			this.localActivityWatch = preferences.activityWatch;
+			if (preferences.nightmode !== undefined)
+				this.localNightmode = preferences.nightmode;
+
+			if (preferences.autoSkipDisliked !== undefined)
+				this.localAutoSkipDisliked = preferences.autoSkipDisliked;
+
+			if (preferences.activityLogPublic !== undefined)
+				this.localActivityLogPublic = preferences.activityLogPublic;
+
+			if (preferences.anonymousSongRequests !== undefined)
+				this.localAnonymousSongRequests =
+					preferences.anonymousSongRequests;
+
+			if (preferences.activityWatch !== undefined)
+				this.localActivityWatch = preferences.activityWatch;
 		});
 	},
 	methods: {
@@ -171,12 +181,10 @@ export default {
 				res => {
 					if (res.status !== "success") {
 						new Toast(res.message);
-
 						return this.$refs.saveButton.handleFailedSave();
 					}
 
 					new Toast("Successfully updated preferences");
-
 					return this.$refs.saveButton.handleSuccessfulSave();
 				}
 			);
@@ -191,65 +199,3 @@ export default {
 	}
 };
 </script>
-
-<style lang="scss" scoped>
-.checkbox-control {
-	display: flex;
-	flex-direction: row;
-	align-items: center;
-
-	p {
-		margin-left: 10px;
-	}
-
-	.switch {
-		position: relative;
-		display: inline-block;
-		flex-shrink: 0;
-		width: 40px;
-		height: 24px;
-	}
-
-	.switch input {
-		opacity: 0;
-		width: 0;
-		height: 0;
-	}
-
-	.slider {
-		position: absolute;
-		cursor: pointer;
-		top: 0;
-		left: 0;
-		right: 0;
-		bottom: 0;
-		background-color: #ccc;
-		transition: 0.2s;
-		border-radius: 34px;
-	}
-
-	.slider:before {
-		position: absolute;
-		content: "";
-		height: 16px;
-		width: 16px;
-		left: 4px;
-		bottom: 4px;
-		background-color: white;
-		transition: 0.2s;
-		border-radius: 50%;
-	}
-
-	input:checked + .slider {
-		background-color: var(--primary-color);
-	}
-
-	input:focus + .slider {
-		box-shadow: 0 0 1px var(--primary-color);
-	}
-
-	input:checked + .slider:before {
-		transform: translateX(16px);
-	}
-}
-</style>

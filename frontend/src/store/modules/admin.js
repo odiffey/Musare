@@ -1,8 +1,10 @@
 /* eslint no-param-reassign: 0 */
 /* eslint-disable import/no-cycle */
 
-import Vue from "vue";
+// import Vue from "vue";
 import admin from "@/api/admin/index";
+
+const Vue = {};
 
 const state = {};
 const getters = {};
@@ -139,7 +141,9 @@ const modules = {
 	},
 	reports: {
 		namespaced: true,
-		state: {},
+		state: {
+			reports: []
+		},
 		getters: {},
 		actions: {
 			/* eslint-disable-next-line no-unused-vars */
@@ -150,6 +154,9 @@ const modules = {
 						.then(res => resolve(res))
 						.catch(err => reject(new Error(err.message)));
 				});
+			},
+			indexReports({ commit }, reports) {
+				commit("indexReports", reports);
 			}
 		},
 		mutations: {}

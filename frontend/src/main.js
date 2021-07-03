@@ -1,23 +1,27 @@
-import Vue from "vue";
+/* eslint-disable vue/one-component-per-file */
+import { createApp } from "vue";
 
-import VueTippy, { TippyComponent } from "vue-tippy";
-import VueRouter from "vue-router";
+import VueTippy, { Tippy } from "vue-tippy";
+import { createRouter, createWebHistory } from "vue-router";
 
 import ws from "@/ws";
 import store from "./store";
 
-import App from "./App.vue";
+import AppComponent from "./App.vue";
 
-const REQUIRED_CONFIG_VERSION = 5;
+const REQUIRED_CONFIG_VERSION = 6;
 
 const handleMetadata = attrs => {
 	document.title = `Musare | ${attrs.title}`;
 };
 
-Vue.use(VueTippy, {
+const app = createApp(AppComponent);
+
+app.use(store);
+
+app.use(VueTippy, {
 	directive: "tippy", // => v-tippy
 	flipDuration: 0,
-	touch: false,
 	popperOptions: {
 		modifiers: {
 			preventOverflow: {
@@ -26,14 +30,12 @@ Vue.use(VueTippy, {
 		}
 	},
 	allowHTML: true,
-	animation: "scale",
-	theme: "dark",
-	arrow: true
+	defaultProps: { animation: "scale", touch: "hold" }
 });
 
-Vue.component("Tippy", TippyComponent);
+app.component("Tippy", Tippy);
 
-Vue.component("Metadata", {
+app.component("Metadata", {
 	watch: {
 		$attrs: {
 			// eslint-disable-next-line vue/no-arrow-functions-in-watch
@@ -49,10 +51,8 @@ Vue.component("Metadata", {
 	}
 });
 
-Vue.use(VueRouter);
-
-Vue.directive("scroll", {
-	inserted(el, binding) {
+app.directive("scroll", {
+	mounted(el, binding) {
 		const f = evt => {
 			clearTimeout(window.scrollDebounceId);
 			window.scrollDebounceId = setTimeout(() => {
@@ -65,15 +65,15 @@ Vue.directive("scroll", {
 	}
 });
 
-Vue.directive("focus", {
-	inserted(el) {
+app.directive("focus", {
+	mounted(el) {
 		window.focusedElementBefore = document.activeElement;
 		el.focus();
 	}
 });
 
-const router = new VueRouter({
-	mode: "history",
+const router = createRouter({
+	history: createWebHistory(),
 	routes: [
 		{
 			path: "/",
@@ -81,7 +81,7 @@ const router = new VueRouter({
 		},
 		{
 			path: "/404",
-			alias: ["*"],
+			alias: ["/:pathMatch(.*)*"],
 			component: () => import("@/pages/404.vue")
 		},
 		{
@@ -164,6 +164,8 @@ const router = new VueRouter({
 	]
 });
 
+app.use(router);
+
 lofig.folder = "../config/default.json";
 
 (async () => {
@@ -207,30 +209,37 @@ lofig.folder = "../config/default.json";
 	ws.socket.on("keep.event:user.preferences.updated", res => {
 		const { preferences } = res.data;
 
-		store.dispatch(
-			"user/preferences/changeAutoSkipDisliked",
-			preferences.autoSkipDisliked
-		);
+		if (preferences.autoSkipDisliked !== undefined)
+			store.dispatch(
+				"user/preferences/changeAutoSkipDisliked",
+				preferences.autoSkipDisliked
+			);
 
-		store.dispatch(
-			"user/preferences/changeNightmode",
-			preferences.nightmode
-		);
+		if (preferences.nightmode !== undefined) {
+			localStorage.setItem("nightmode", preferences.nightmode);
+			store.dispatch(
+				"user/preferences/changeNightmode",
+				preferences.nightmode
+			);
+		}
 
-		store.dispatch(
-			"user/preferences/changeActivityLogPublic",
-			preferences.activityLogPublic
-		);
+		if (preferences.activityLogPublic !== undefined)
+			store.dispatch(
+				"user/preferences/changeActivityLogPublic",
+				preferences.activityLogPublic
+			);
 
-		store.dispatch(
-			"user/preferences/changeAnonymousSongRequests",
-			preferences.anonymousSongRequests
-		);
+		if (preferences.anonymousSongRequests !== undefined)
+			store.dispatch(
+				"user/preferences/changeAnonymousSongRequests",
+				preferences.anonymousSongRequests
+			);
 
-		store.dispatch(
-			"user/preferences/changeActivityWatch",
-			preferences.activityWatch
-		);
+		if (preferences.activityWatch !== undefined)
+			store.dispatch(
+				"user/preferences/changeActivityWatch",
+				preferences.activityWatch
+			);
 	});
 
 	router.beforeEach((to, from, next) => {
@@ -239,7 +248,7 @@ lofig.folder = "../config/default.json";
 			window.stationInterval = 0;
 		}
 
-		if (ws.socket) {
+		if (ws.socket && to.fullPath !== from.fullPath) {
 			ws.clearCallbacks();
 			ws.destroyListeners();
 		}
@@ -275,34 +284,5 @@ lofig.folder = "../config/default.json";
 		} else next();
 	});
 
-	Vue.directive("click-outside", {
-		bind(element, binding) {
-			window.handleOutsideClick = event => {
-				if (
-					!(
-						element === event.target ||
-						element.contains(event.target)
-					)
-				) {
-					binding.value();
-				}
-			};
-
-			document.body.addEventListener("click", window.handleOutsideClick);
-		},
-		unbind() {
-			document.body.removeEventListener(
-				"click",
-				window.handleOutsideClick
-			);
-		}
-	});
-
-	// eslint-disable-next-line no-new
-	new Vue({
-		router,
-		store,
-		el: "#root",
-		render: wrapper => wrapper(App)
-	});
+	app.mount("#root");
 })();

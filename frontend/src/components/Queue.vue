@@ -1,71 +1,73 @@
 <template>
 	<div id="queue">
-		<draggable
+		<div
+			v-if="queue.length > 0"
 			:class="{
 				'actionable-button-hidden': !actionableButtonVisible,
 				'scrollable-list': true
 			}"
-			v-if="queue.length > 0"
-			v-model="queue"
-			v-bind="dragOptions"
-			@start="drag = true"
-			@end="drag = false"
-			@change="repositionSongInQueue"
 		>
-			<transition-group
-				type="transition"
-				:name="!drag ? 'draggable-list-transition' : null"
+			<draggable
+				tag="transition-group"
+				:component-data="{
+					name: !drag ? 'draggable-list-transition' : null
+				}"
+				v-model="queue"
+				item-key="_id"
+				v-bind="dragOptions"
+				@start="drag = true"
+				@end="drag = false"
+				@change="repositionSongInQueue"
 			>
-				<song-item
-					v-for="(song, index) in queue"
-					:key="`queue-${song._id}`"
-					:song="song"
-					:requested-by="
-						station.type === 'community' &&
-							station.partyMode === true
-					"
-					:class="{
-						'item-draggable': isAdminOnly() || isOwnerOnly()
-					}"
-					:disabled-actions="[]"
-				>
-					<div
-						v-if="isAdminOnly() || isOwnerOnly()"
-						class="song-actions"
-						slot="actions"
+				<template #item="{element, index}">
+					<song-item
+						:song="element"
+						:requested-by="
+							station.type === 'community' &&
+								station.partyMode === true
+						"
+						:class="{
+							'item-draggable': isAdminOnly() || isOwnerOnly()
+						}"
+						:disabled-actions="[]"
 					>
-						<confirm
-							v-if="isOwnerOnly() || isAdminOnly()"
-							placement="left"
-							@confirm="removeFromQueue(song.youtubeId)"
+						<template
+							v-if="isAdminOnly() || isOwnerOnly()"
+							#actions
 						>
-							<i
-								class="material-icons delete-icon"
-								content="Remove Song from Queue"
-								v-tippy
-								>delete_forever</i
+							<confirm
+								v-if="isOwnerOnly() || isAdminOnly()"
+								placement="left"
+								@confirm="removeFromQueue(element.youtubeId)"
 							>
-						</confirm>
-						<i
-							class="material-icons"
-							v-if="index > 0"
-							@click="moveSongToTop(song, index)"
-							content="Move to top of Queue"
-							v-tippy
-							>vertical_align_top</i
-						>
-						<i
-							v-if="queue.length - 1 !== index"
-							@click="moveSongToBottom(song, index)"
-							class="material-icons"
-							content="Move to bottom of Queue"
-							v-tippy
-							>vertical_align_bottom</i
-						>
-					</div>
-				</song-item>
-			</transition-group>
-		</draggable>
+								<i
+									class="material-icons delete-icon"
+									content="Remove Song from Queue"
+									v-tippy
+									>delete_forever</i
+								>
+							</confirm>
+							<i
+								class="material-icons"
+								v-if="index > 0"
+								@click="moveSongToTop(element, index)"
+								content="Move to top of Queue"
+								v-tippy
+								>vertical_align_top</i
+							>
+							<i
+								v-if="queue.length - 1 !== index"
+								@click="moveSongToBottom(element, index)"
+								class="material-icons"
+								content="Move to bottom of Queue"
+								v-tippy
+								>vertical_align_bottom</i
+							>
+						</template>
+					</song-item>
+				</template>
+			</draggable>
+		</div>
 		<p class="nothing-here-text" v-else>
 			There are no songs currently queued
 		</p>
@@ -83,7 +85,7 @@
 			@click="openModal('manageStation') & showManageStationTab('search')"
 		>
 			<i class="material-icons icon-with-button">queue</i>
-			<span class="optional-desktop-only-text"> Add Song To Queue </span>
+			<span> Add Song To Queue </span>
 		</button>
 		<button
 			class="button is-primary tab-actionable-button"
@@ -93,7 +95,7 @@
 			@click="openModal('requestSong')"
 		>
 			<i class="material-icons icon-with-button">queue</i>
-			<span class="optional-desktop-only-text"> Request Song </span>
+			<span> Request Song </span>
 		</button>
 		<button
 			class="button is-primary tab-actionable-button disabled"
@@ -109,7 +111,7 @@
 			v-tippy="{ theme: 'info' }"
 		>
 			<i class="material-icons icon-with-button">queue</i>
-			<span class="optional-desktop-only-text"> Add Song To Queue </span>
+			<span> Add Song To Queue </span>
 		</button>
 		<div
 			id="queue-locked"

@@ -1,22 +1,25 @@
 <template>
 	<tippy
-		interactive="true"
-		touch="true"
+		:interactive="true"
+		:touch="true"
 		:placement="placement"
 		theme="confirm"
 		ref="confirm"
 		trigger="click"
-		class="button-with-tooltip"
-		@hide="clickedOnce = false"
+		:append-to="body"
+		@hide="delayedHide()"
 	>
-		<template #trigger>
-			<div @click.shift.stop="confirm(true)" @click.exact="confirm()">
-				<slot />
-			</div>
+		<div
+			@click.shift.stop="shiftClick($event)"
+			@click.exact="click($event)"
+		>
+			<slot ref="trigger" />
+		</div>
+		<template #content>
+			<a @click="confirm($event)">
+				Click to Confirm
+			</a>
 		</template>
-		<a @click="confirm(null, $event)">
-			Click to Confirm
-		</a>
 	</tippy>
 </template>
 
@@ -28,34 +31,41 @@ export default {
 			default: "top"
 		}
 	},
+	emits: ["confirm"],
 	data() {
 		return {
-			clickedOnce: false
+			clickedOnce: false,
+			body: document.body
 		};
 	},
-	methods: {
-		confirm(confirm, event) {
-			if (confirm === null) {
-				/* eslint-disable no-param-reassign */
-				if (
-					event &&
-					event.type === "click" &&
-					!event.altKey &&
-					!event.ctrlKey &&
-					!event.metaKey &&
-					!event.shiftKey
-				)
-					confirm = true;
-				else confirm = false;
-			}
 
-			if (confirm === false) {
+	methods: {
+		// eslint-disable-next-line no-unused-vars
+		confirm(event) {
+			if (
+				!event ||
+				event.type !== "click" ||
+				event.altKey ||
+				event.ctrlKey ||
+				event.metaKey
+			)
+				return;
+
+			this.clickedOnce = false;
+			this.$emit("confirm");
+			this.$refs.confirm.tippy.hide();
+		},
+		click(event) {
+			if (!this.clickedOnce) this.clickedOnce = true;
+			else this.confirm(event);
+		},
+		shiftClick(event) {
+			this.confirm(event);
+		},
+		delayedHide() {
+			setTimeout(() => {
 				this.clickedOnce = false;
-				this.$refs.confirm.tip.hide();
-			} else if (confirm === true || this.clickedOnce === true) {
-				this.clickedOnce = false;
-				this.$emit("confirm");
-			} else this.clickedOnce = true;
+			}, 25);
 		}
 	}
 };

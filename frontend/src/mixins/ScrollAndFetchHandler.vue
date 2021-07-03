@@ -1,5 +1,8 @@
 <script>
 export default {
+	setup() {
+		window.addEventListener("scroll", this.handleScroll);
+	},
 	data() {
 		return {
 			position: 1,
@@ -19,11 +22,6 @@ export default {
 	},
 	unmounted() {
 		clearInterval(this.interval);
-	},
-	created() {
-		window.addEventListener("scroll", this.handleScroll);
-	},
-	destroyed() {
 		window.removeEventListener("scroll", this.handleScroll);
 	},
 	methods: {

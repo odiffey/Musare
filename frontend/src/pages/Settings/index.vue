@@ -49,21 +49,34 @@
 
 <script>
 import { mapActions, mapGetters, mapState } from "vuex";
+import { defineAsyncComponent } from "vue";
+
 import Toast from "toasters";
+
+import TabQueryHandler from "@/mixins/TabQueryHandler.vue";
 
 import MainHeader from "@/components/layout/MainHeader.vue";
 import MainFooter from "@/components/layout/MainFooter.vue";
-import TabQueryHandler from "@/mixins/TabQueryHandler.vue";
 
 export default {
 	components: {
 		MainHeader,
 		MainFooter,
-		SecuritySettings: () => import("./Tabs/Security.vue"),
-		AccountSettings: () => import("./Tabs/Account.vue"),
-		ProfileSettings: () => import("./Tabs/Profile.vue"),
-		PreferencesSettings: () => import("./Tabs/Preferences.vue"),
-		RemoveAccount: () => import("@/components/modals/RemoveAccount.vue")
+		SecuritySettings: defineAsyncComponent(() =>
+			import("./Tabs/Security.vue")
+		),
+		AccountSettings: defineAsyncComponent(() =>
+			import("./Tabs/Account.vue")
+		),
+		ProfileSettings: defineAsyncComponent(() =>
+			import("./Tabs/Profile.vue")
+		),
+		PreferencesSettings: defineAsyncComponent(() =>
+			import("./Tabs/Preferences.vue")
+		),
+		RemoveAccount: defineAsyncComponent(() =>
+			import("@/components/modals/RemoveAccount.vue")
+		)
 	},
 	mixins: [TabQueryHandler],
 	data() {
@@ -151,28 +164,16 @@ export default {
 		border-radius: 3px;
 	}
 
-	#page-title {
-		margin-top: 0;
-		font-size: 35px;
-		text-align: center;
-	}
-
 	#sidebar-with-content {
 		display: flex;
 		flex-direction: column;
 	}
 
 	@media only screen and (min-width: 700px) {
-		#page-title {
-			margin: 0;
-			font-size: 40px;
-		}
-
 		#sidebar-with-content {
 			width: 962px;
 			max-width: 100%;
 			margin: 0 auto;
-			margin-top: 30px;
 			flex-direction: row;
 
 			.nav-links {

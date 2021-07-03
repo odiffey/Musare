@@ -1064,22 +1064,17 @@ export default {
 		async.waterfall(
 			[
 				next => {
-					userModel.findByIdAndUpdate(
-						session.userId,
-						{
-							$set: {
-								preferences: {
-									nightmode: preferences.nightmode,
-									autoSkipDisliked: preferences.autoSkipDisliked,
-									activityLogPublic: preferences.activityLogPublic,
-									anonymousSongRequests: preferences.anonymousSongRequests,
-									activityWatch: preferences.activityWatch
-								}
-							}
-						},
-						{ new: false },
-						next
-					);
+					const $set = {};
+
+					Object.keys(preferences).forEach(preference => {
+						$set[`preferences.${preference}`] = preferences[preference];
+					});
+
+					return next(null, $set);
+				},
+
+				($set, next) => {
+					userModel.findByIdAndUpdate(session.userId, { $set }, { new: false, upsert: true }, next);
 				}
 			],
 			async (err, user) => {
@@ -1105,14 +1100,17 @@ export default {
 					}
 				});
 
-				if (preferences.nightmode !== user.preferences.nightmode)
+				if (preferences.nightmode !== undefined && preferences.nightmode !== user.preferences.nightmode)
 					ActivitiesModule.runJob("ADD_ACTIVITY", {
 						userId: session.userId,
 						type: "user__toggle_nightmode",
 						payload: { message: preferences.nightmode ? "Enabled nightmode" : "Disabled nightmode" }
 					});
 
-				if (preferences.autoSkipDisliked !== user.preferences.autoSkipDisliked)
+				if (
+					preferences.autoSkipDisliked !== undefined &&
+					preferences.autoSkipDisliked !== user.preferences.autoSkipDisliked
+				)
 					ActivitiesModule.runJob("ADD_ACTIVITY", {
 						userId: session.userId,
 						type: "user__toggle_autoskip_disliked_songs",
@@ -1123,7 +1121,10 @@ export default {
 						}
 					});
 
-				if (preferences.activityWatch !== user.preferences.activityWatch)
+				if (
+					preferences.activityWatch !== undefined &&
+					preferences.activityWatch !== user.preferences.activityWatch
+				)
 					ActivitiesModule.runJob("ADD_ACTIVITY", {
 						userId: session.userId,
 						type: "user__toggle_activity_watch",
@@ -1794,14 +1795,14 @@ export default {
 	}),
 
 	/**
-	 * Updates the type of a user's avatar
+	 * Updates a user's avatar
 	 *
 	 * @param {object} session - the session object automatically added by the websocket
 	 * @param {string} updatingUserId - the updating user's id
-	 * @param {string} newType - the new type
+	 * @param {string} newAvatar - the new avatar object
 	 * @param {Function} cb - gets called with the result
 	 */
-	updateAvatarType: isLoginRequired(async function updateAvatarType(session, updatingUserId, newAvatar, cb) {
+	updateAvatar: isLoginRequired(async function updateAvatarType(session, updatingUserId, newAvatar, cb) {
 		const userModel = await DBModule.runJob("GET_MODEL", { modelName: "user" }, this);
 
 		async.waterfall(
@@ -1831,8 +1832,8 @@ export default {
 					err = await UtilsModule.runJob("GET_ERROR", { error: err }, this);
 					this.log(
 						"ERROR",
-						"UPDATE_AVATAR_TYPE",
-						`Couldn't update avatar type for user "${updatingUserId}" to type "${newAvatar.type}". "${err}"`
+						"UPDATE_AVATAR",
+						`Couldn't update avatar for user "${updatingUserId}" to type "${newAvatar.type}" and color "${newAvatar.color}". "${err}"`
 					);
 					return cb({ status: "error", message: err });
 				}
@@ -1840,18 +1841,18 @@ export default {
 				ActivitiesModule.runJob("ADD_ACTIVITY", {
 					userId: updatingUserId,
 					type: "user__edit_avatar",
-					payload: { message: `Changed avatar to use ${newAvatar.type}` }
+					payload: { message: `Changed avatar to use ${newAvatar.type} and ${newAvatar.color}` }
 				});
 
 				this.log(
 					"SUCCESS",
-					"UPDATE_AVATAR_TYPE",
-					`Updated avatar type for user "${updatingUserId}" to type "${newAvatar.type}".`
+					"UPDATE_AVATAR",
+					`Updated avatar for user "${updatingUserId}" to type "${newAvatar.type} and color ${newAvatar.color}".`
 				);
 
 				return cb({
 					status: "success",
-					message: "Avatar type updated successfully"
+					message: "Avatar updated successfully"
 				});
 			}
 		);

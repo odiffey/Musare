@@ -24,11 +24,12 @@
 			<div class="tab" v-show="tab === 'playlists'">
 				<div v-if="excludedPlaylists.length > 0">
 					<playlist-item
-						:playlist="playlist"
 						v-for="playlist in excludedPlaylists"
 						:key="`key-${playlist._id}`"
+						:playlist="playlist"
+						:show-owner="true"
 					>
-						<div class="icons-group" slot="actions">
+						<template #actions>
 							<confirm @confirm="deselectPlaylist(playlist._id)">
 								<i
 									class="material-icons stop-icon"
@@ -54,7 +55,7 @@
 								v-tippy
 								>visibility</i
 							>
-						</div>
+						</template>
 					</playlist-item>
 				</div>
 				<p v-else class="has-text-centered scrollable-list">

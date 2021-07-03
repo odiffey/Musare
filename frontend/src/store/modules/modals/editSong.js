@@ -1,8 +1,5 @@
 /* eslint no-param-reassign: 0 */
 
-// import Vue from "vue";
-// import admin from "@/api/admin/index";
-
 export default {
 	namespaced: true,
 	state: {
@@ -35,7 +32,13 @@ export default {
 		updateSongField: ({ commit }, data) => commit("updateSongField", data),
 		selectDiscogsInfo: ({ commit }, discogsInfo) =>
 			commit("selectDiscogsInfo", discogsInfo),
-		updateReports: ({ commit }, reports) => commit("updateReports", reports)
+		updateReports: ({ commit }, reports) =>
+			commit("updateReports", reports),
+		resolveReport: ({ commit }, reportId) =>
+			commit("resolveReport", reportId),
+		updateYoutubeId: ({ commit }, youtubeId) => {
+			commit("updateYoutubeId", youtubeId);
+		}
 	},
 	mutations: {
 		showTab(state, tab) {
@@ -81,6 +84,14 @@ export default {
 		},
 		updateReports(state, reports) {
 			state.reports = reports;
+		},
+		resolveReport(state, reportId) {
+			state.reports = state.reports.filter(
+				report => report._id !== reportId
+			);
+		},
+		updateYoutubeId(state, youtubeId) {
+			state.song.youtubeId = youtubeId;
 		}
 	}
 };

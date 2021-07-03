@@ -89,18 +89,41 @@ p {
 }
 
 .modal-card-foot {
-	overflow: auto;
+	overflow: initial;
 
-	& > div {
-		display: flex;
-		flex-grow: 1;
-		column-gap: 16px;
+	&::v-deep {
+		& > div {
+			display: flex;
+			flex-grow: 1;
+			column-gap: 16px;
+		}
+
+		.right {
+			margin-left: auto;
+			justify-content: flex-end;
+			column-gap: 16px;
+		}
 	}
+}
 
-	.right {
-		margin-left: auto;
-		justify-content: flex-end;
-		column-gap: 16px;
+@media screen and (max-width: 600px) {
+	.modal-card {
+		max-height: none;
+
+		.modal-card-body {
+			// padding: 0;
+		}
+
+		.modal-card-head,
+		.modal-card-foot {
+			border-radius: 0;
+		}
+	}
+}
+
+@media screen and (max-height: 650px) {
+	.modal-card {
+		height: 100%;
 	}
 }
 </style>

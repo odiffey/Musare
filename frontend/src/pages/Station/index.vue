@@ -119,7 +119,7 @@
 									<i class="material-icons icon-with-button"
 										>play_arrow</i
 									>
-									<span class="optional-desktop-only-text">
+									<span>
 										Resume Station
 									</span>
 								</button>
@@ -131,7 +131,7 @@
 									<i class="material-icons icon-with-button"
 										>pause</i
 									>
-									<span class="optional-desktop-only-text">
+									<span>
 										Pause Station
 									</span>
 								</button>
@@ -144,7 +144,7 @@
 									<i class="material-icons icon-with-button"
 										>skip_next</i
 									>
-									<span class="optional-desktop-only-text">
+									<span>
 										Force Skip
 									</span>
 								</button>
@@ -157,7 +157,7 @@
 									<i class="material-icons icon-with-button"
 										>settings</i
 									>
-									<span class="optional-desktop-only-text">
+									<span>
 										Manage Station
 									</span>
 								</button>
@@ -319,7 +319,18 @@
 
 									<!-- Vote to Skip Button -->
 									<button
-										v-if="loggedIn"
+										v-if="!skipVotesLoaded"
+										class="button is-primary disabled"
+										content="Skip votes have not been loaded yet"
+										v-tippy
+									>
+										<i
+											class="material-icons icon-with-button"
+											>skip_next</i
+										>
+									</button>
+									<button
+										v-else-if="loggedIn"
 										class="button is-primary"
 										@click="voteSkipStation()"
 										content="Vote to Skip Song"
@@ -392,6 +403,7 @@
 									<!-- Ratings (Like/Dislike) Buttons -->
 									<div
 										id="ratings"
+										v-if="ratingsLoaded"
 										:class="{
 											liked: liked,
 											disliked: disliked
@@ -429,45 +441,77 @@
 											>{{ currentSong.dislikes }}
 										</button>
 									</div>
+									<div id="ratings" class="disabled" v-else>
+										<!-- Like Song Button -->
+										<button
+											class="button is-success like-song disabled"
+											id="like-song"
+											content="Ratings have not been loaded yet"
+											v-tippy
+										>
+											<i
+												class="material-icons icon-with-button"
+												>thumb_up_alt</i
+											>
+										</button>
+
+										<!-- Dislike Song Button -->
+										<button
+											class="button is-danger dislike-song disabled"
+											id="dislike-song"
+											content="Ratings have not been loaded yet"
+											v-tippy
+										>
+											<i
+												class="material-icons icon-with-button"
+												>thumb_down_alt</i
+											>
+										</button>
+									</div>
 
 									<!-- Add Song To Playlist Button & Dropdown -->
 									<add-to-playlist-dropdown
 										:song="currentSong"
 										placement="top-end"
 									>
-										<div
-											slot="button"
-											id="add-song-to-playlist"
-											content="Add Song to Playlist"
-											v-tippy
-										>
-											<div class="control has-addons">
-												<button
-													class="button is-primary"
-												>
-													<i class="material-icons"
-														>playlist_add</i
+										<template #button>
+											<div
+												id="add-song-to-playlist"
+												content="Add Song to Playlist"
+												v-tippy
+											>
+												<div class="control has-addons">
+													<button
+														class="button is-primary"
 													>
-												</button>
-												<button
-													class="button"
-													id="dropdown-toggle"
-												>
-													<i class="material-icons">
-														{{
-															showPlaylistDropdown
-																? "expand_more"
-																: "expand_less"
-														}}
-													</i>
-												</button>
+														<i
+															class="material-icons"
+														>
+															playlist_add
+														</i>
+													</button>
+													<button
+														class="button"
+														id="dropdown-toggle"
+													>
+														<i
+															class="material-icons"
+														>
+															{{
+																showPlaylistDropdown
+																	? "expand_more"
+																	: "expand_less"
+															}}
+														</i>
+													</button>
+												</div>
 											</div>
-										</div>
+										</template>
 									</add-to-playlist-dropdown>
 								</div>
 								<div id="right-buttons" v-else>
 									<!-- Disabled Ratings (Like/Dislike) Buttons -->
-									<div id="ratings">
+									<div id="ratings" v-if="ratingsLoaded">
 										<!-- Disabled Like Song Button -->
 										<button
 											class="button is-success disabled"
@@ -492,6 +536,33 @@
 												class="material-icons icon-with-button"
 												>thumb_down_alt</i
 											>{{ currentSong.dislikes }}
+										</button>
+									</div>
+									<div id="ratings" v-else>
+										<!-- Disabled Like Song Button -->
+										<button
+											class="button is-success disabled"
+											id="like-song"
+											content="Ratings have not been loaded yet"
+											v-tippy="{ theme: 'info' }"
+										>
+											<i
+												class="material-icons icon-with-button"
+												>thumb_up_alt</i
+											>
+										</button>
+
+										<!-- Disabled Dislike Song Button -->
+										<button
+											class="button is-danger disabled"
+											id="dislike-song"
+											content="Ratings have not been loaded yet"
+											v-tippy="{ theme: 'info' }"
+										>
+											<i
+												class="material-icons icon-with-button"
+												>thumb_down_alt</i
+											>
 										</button>
 									</div>
 									<!-- Disabled Add Song To Playlist Button & Dropdown -->
@@ -612,6 +683,7 @@
 
 <script>
 import { mapState, mapActions, mapGetters } from "vuex";
+import { defineAsyncComponent } from "vue";
 import Toast from "toasters";
 import { ContentLoader } from "vue-content-loader";
 
@@ -636,24 +708,34 @@ export default {
 		ContentLoader,
 		MainHeader,
 		MainFooter,
-		RequestSong: () => import("@/components/modals/RequestSong.vue"),
-		EditPlaylist: () => import("@/components/modals/EditPlaylist"),
-		CreatePlaylist: () => import("@/components/modals/CreatePlaylist.vue"),
-		ManageStation: () =>
-			import("@/components/modals/ManageStation/index.vue"),
-		Report: () => import("@/components/modals/Report.vue"),
+		RequestSong: defineAsyncComponent(() =>
+			import("@/components/modals/RequestSong.vue")
+		),
+		EditPlaylist: defineAsyncComponent(() =>
+			import("@/components/modals/EditPlaylist")
+		),
+		CreatePlaylist: defineAsyncComponent(() =>
+			import("@/components/modals/CreatePlaylist.vue")
+		),
+		ManageStation: defineAsyncComponent(() =>
+			import("@/components/modals/ManageStation/index.vue")
+		),
+		Report: defineAsyncComponent(() =>
+			import("@/components/modals/Report.vue")
+		),
 		Z404,
 		FloatingBox,
 		StationSidebar,
 		AddToPlaylistDropdown,
-		EditSong: () => import("@/components/modals/EditSong"),
+		EditSong: defineAsyncComponent(() =>
+			import("@/components/modals/EditSong")
+		),
 		SongItem
 	},
 	data() {
 		return {
 			utils,
 			isIOS: navigator.platform.match(/iPhone|iPod|iPad/),
-			manageStationVersion: "",
 			title: "Station",
 			loading: true,
 			exists: true,
@@ -665,7 +747,6 @@ export default {
 			liked: false,
 			disliked: false,
 			timeBeforePause: 0,
-			skipVotes: 0,
 			systemDifference: 0,
 			attemptsToPlayVideo: 0,
 			canAutoplay: true,
@@ -687,6 +768,22 @@ export default {
 		};
 	},
 	computed: {
+		skipVotesLoaded() {
+			return (
+				!this.noSong &&
+				Number.isInteger(this.currentSong.skipVotes) &&
+				this.currentSong.skipVotes >= 0
+			);
+		},
+		ratingsLoaded() {
+			return (
+				!this.noSong &&
+				Number.isInteger(this.currentSong.likes) &&
+				Number.isInteger(this.currentSong.dislikes) &&
+				this.currentSong.likes >= 0 &&
+				this.currentSong.dislikes >= 0
+			);
+		},
 		...mapState("modalVisibility", {
 			modals: state => state.modals
 		}),
@@ -717,10 +814,6 @@ export default {
 		})
 	},
 	async mounted() {
-		lofig.get("manageStationVersion", manageStationVersion => {
-			this.manageStationVersion = manageStationVersion;
-		});
-
 		this.editSongModalWatcher = this.$store.watch(
 			state => state.modals.editSong.video.paused,
 			paused => {
@@ -779,6 +872,7 @@ export default {
 				timePaused,
 				natural
 			} = res.data;
+
 			if (this.noSong || !natural) {
 				this.setCurrentSong({
 					currentSong,
@@ -840,8 +934,7 @@ export default {
 		this.socket.on("event:song.liked", res => {
 			if (!this.noSong) {
 				if (res.data.youtubeId === this.currentSong.youtubeId) {
-					this.currentSong.dislikes = res.data.dislikes;
-					this.currentSong.likes = res.data.likes;
+					this.updateCurrentSongRatings(res.data);
 				}
 			}
 		});
@@ -849,8 +942,7 @@ export default {
 		this.socket.on("event:song.disliked", res => {
 			if (!this.noSong) {
 				if (res.data.youtubeId === this.currentSong.youtubeId) {
-					this.currentSong.dislikes = res.data.dislikes;
-					this.currentSong.likes = res.data.likes;
+					this.updateCurrentSongRatings(res.data);
 				}
 			}
 		});
@@ -858,8 +950,7 @@ export default {
 		this.socket.on("event:song.unliked", res => {
 			if (!this.noSong) {
 				if (res.data.youtubeId === this.currentSong.youtubeId) {
-					this.currentSong.dislikes = res.data.dislikes;
-					this.currentSong.likes = res.data.likes;
+					this.updateCurrentSongRatings(res.data);
 				}
 			}
 		});
@@ -867,8 +958,7 @@ export default {
 		this.socket.on("event:song.undisliked", res => {
 			if (!this.noSong) {
 				if (res.data.youtubeId === this.currentSong.youtubeId) {
-					this.currentSong.dislikes = res.data.dislikes;
-					this.currentSong.likes = res.data.likes;
+					this.updateCurrentSongRatings(res.data);
 				}
 			}
 		});
@@ -932,7 +1022,8 @@ export default {
 		});
 
 		this.socket.on("event:station.voteSkipSong", () => {
-			if (this.currentSong) this.currentSong.skipVotes += 1;
+			if (this.currentSong)
+				this.updateCurrentSongSkipVotes(this.currentSong.skipVotes + 1);
 		});
 
 		this.socket.on("event:privatePlaylist.selected", res => {
@@ -956,12 +1047,10 @@ export default {
 			document.body.style.cssText = `--primary-color: var(--${theme})`;
 		});
 
-		this.socket.on("event:station.name.updated", res => {
+		this.socket.on("event:station.name.updated", async res => {
 			this.station.name = res.data.name;
-			// eslint-disable-next-line no-restricted-globals
-			history.pushState(
-				{},
-				null,
+
+			await this.$router.push(
 				`${res.data.name}?${Object.keys(this.$route.query)
 					.map(key => {
 						return `${encodeURIComponent(key)}=${encodeURIComponent(
@@ -970,6 +1059,9 @@ export default {
 					})
 					.join("&")}`
 			);
+
+			// eslint-disable-next-line no-restricted-globals
+			history.replaceState({ ...history.state, ...{} }, null);
 		});
 
 		this.socket.on("event:station.displayName.updated", res => {
@@ -1021,7 +1113,7 @@ export default {
 			this.volumeSliderValue = volume * 100;
 		}
 	},
-	beforeDestroy() {
+	beforeUnmount() {
 		document.body.style.cssText = "";
 
 		/** Reset Songslist */
@@ -1074,6 +1166,7 @@ export default {
 		},
 		setNextCurrentSong(nextCurrentSong, skipSkipCheck = false) {
 			this.nextCurrentSong = nextCurrentSong;
+			// If skipSkipCheck is true, it won't try to skip the song
 			if (this.getTimeRemaining() <= 0 && !skipSkipCheck) {
 				this.skipSong();
 			}
@@ -1109,10 +1202,12 @@ export default {
 				pausedAt
 			} = data;
 
-			if (!currentSong.skipDuration || currentSong.skipDuration < 0)
-				currentSong.skipDuration = 0;
-			if (!currentSong.duration || currentSong.duration < 0)
-				currentSong.duration = 0;
+			if (currentSong) {
+				if (!currentSong.skipDuration || currentSong.skipDuration < 0)
+					currentSong.skipDuration = 0;
+				if (!currentSong.duration || currentSong.duration < 0)
+					currentSong.duration = 0;
+			}
 
 			this.updateCurrentSong(currentSong || {});
 
@@ -1121,6 +1216,7 @@ export default {
 				nextSong = this.songsList[0].youtubeId
 					? this.songsList[0]
 					: null;
+
 			this.updateNextSong(nextSong);
 			this.setNextCurrentSong(
 				{
@@ -1174,6 +1270,17 @@ export default {
 				}
 
 				this.socket.dispatch(
+					"songs.getSongRatings",
+					currentSong._id,
+					res => {
+						if (currentSong._id === this.currentSong._id) {
+							const { likes, dislikes } = res.data;
+							this.updateCurrentSongRatings({ likes, dislikes });
+						}
+					}
+				);
+
+				this.socket.dispatch(
 					"songs.getOwnSongRatings",
 					currentSong.youtubeId,
 					res => {
@@ -1200,8 +1307,6 @@ export default {
 				if (this.playerReady) this.player.pauseVideo();
 				this.updateNoSong(true);
 			}
-
-			console.log(666);
 
 			this.calculateTimeElapsed();
 			this.resizeSeekerbar();
@@ -1758,6 +1863,18 @@ export default {
 						this.updateUsers(res.data.users);
 
 						this.socket.dispatch(
+							"stations.getStationIncludedPlaylistsById",
+							this.station._id,
+							res => {
+								if (res.status === "success") {
+									this.setIncludedPlaylists(
+										res.data.playlists
+									);
+								}
+							}
+						);
+
+						this.socket.dispatch(
 							"stations.getStationExcludedPlaylistsById",
 							this.station._id,
 							res => {
@@ -1771,13 +1888,10 @@ export default {
 
 						this.socket.dispatch("stations.getQueue", _id, res => {
 							if (res.status === "success") {
-								this.updateSongsList(res.data.queue);
-								let nextSong = null;
-								if (this.songsList[0]) {
-									nextSong = this.songsList[0].youtubeId
-										? this.songsList[0]
-										: null;
-								}
+								const { queue } = res.data;
+								this.updateSongsList(queue);
+								const [nextSong] = queue;
+
 								this.updateNextSong(nextSong);
 								this.setNextCurrentSong({
 									currentSong: nextSong,
@@ -2001,7 +2115,9 @@ export default {
 			"updateNoSong",
 			"updateIfStationIsFavorited",
 			"setIncludedPlaylists",
-			"setExcludedPlaylists"
+			"setExcludedPlaylists",
+			"updateCurrentSongRatings",
+			"updateCurrentSongSkipVotes"
 		]),
 		...mapActions("modals/editSong", ["stopVideo"])
 	}

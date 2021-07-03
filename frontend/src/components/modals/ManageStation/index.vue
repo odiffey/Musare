@@ -449,14 +449,13 @@ export default {
 			{ modal: "manageStation" }
 		);
 	},
-	beforeDestroy() {
+	beforeUnmount() {
 		this.socket.dispatch(
 			"apis.leaveRoom",
 			`manage-station.${this.stationId}`,
 			() => {}
 		);
 
-		this.repositionSongInList([]);
 		this.clearStation();
 		this.showTab("settings");
 	},

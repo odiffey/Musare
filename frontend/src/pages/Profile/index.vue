@@ -2,6 +2,7 @@
 	<div v-if="isUser">
 		<edit-playlist v-if="modals.editPlaylist" />
 		<report v-if="modals.report" />
+		<view-report v-if="modals.viewReport" />
 		<edit-song v-if="modals.editSong" song-type="songs" />
 
 		<metadata :title="`Profile | ${user.username}`" />
@@ -107,12 +108,13 @@
 <script>
 import { mapState, mapGetters } from "vuex";
 import { format, parseISO } from "date-fns";
+import { defineAsyncComponent } from "vue";
+
+import TabQueryHandler from "@/mixins/TabQueryHandler.vue";
 
 import ProfilePicture from "@/components/ProfilePicture";
 import MainHeader from "@/components/layout/MainHeader";
 import MainFooter from "@/components/layout/MainFooter.vue";
-
-import TabQueryHandler from "@/mixins/TabQueryHandler.vue";
 
 import RecentActivity from "./Tabs/RecentActivity.vue";
 import Playlists from "./Tabs/Playlists.vue";
@@ -124,9 +126,18 @@ export default {
 		ProfilePicture,
 		RecentActivity,
 		Playlists,
-		EditPlaylist: () => import("@/components/modals/EditPlaylist"),
-		Report: () => import("@/components/modals/Report.vue"),
-		EditSong: () => import("@/components/modals/EditSong")
+		EditPlaylist: defineAsyncComponent(() =>
+			import("@/components/modals/EditPlaylist")
+		),
+		Report: defineAsyncComponent(() =>
+			import("@/components/modals/Report.vue")
+		),
+		ViewReport: defineAsyncComponent(() =>
+			import("@/components/modals/ViewReport.vue")
+		),
+		EditSong: defineAsyncComponent(() =>
+			import("@/components/modals/EditSong")
+		)
 	},
 	mixins: [TabQueryHandler],
 	data() {
@@ -407,7 +418,7 @@ export default {
 		}
 
 		.item {
-			overflow: hidden;
+			overflow: initial;
 
 			&:not(:last-of-type) {
 				margin-bottom: 10px;

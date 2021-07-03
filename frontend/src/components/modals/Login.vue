@@ -23,9 +23,7 @@
 								class="input"
 								type="email"
 								placeholder="Email..."
-								@keypress="
-									$parent.submitOnEnter(submitModal, $event)
-								"
+								@keypress="submitOnEnter(submitModal, $event)"
 							/>
 						</p>
 
@@ -41,9 +39,8 @@
 								type="password"
 								ref="password"
 								placeholder="Password..."
-								@keypress="
-									$parent.submitOnEnter(submitModal, $event)
-								"
+								@input="checkForAutofill($event)"
+								@keypress="submitOnEnter(submitModal, $event)"
 							/>
 							<a @click="togglePasswordVisibility()">
 								<i class="material-icons">
@@ -147,6 +144,19 @@ export default {
 		if (this.$route.path === "/login") this.isPage = true;
 	},
 	methods: {
+		checkForAutofill(event) {
+			if (
+				event.target.value !== "" &&
+				event.inputType === undefined &&
+				event.data === undefined &&
+				event.dataTransfer === undefined &&
+				event.isComposing === undefined
+			)
+				this.submitModal();
+		},
+		submitOnEnter(cb, event) {
+			if (event.which === 13) cb();
+		},
 		submitModal() {
 			this.login({
 				email: this.email,

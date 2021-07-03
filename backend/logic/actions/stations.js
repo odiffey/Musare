@@ -168,17 +168,12 @@ CacheModule.runJob("SUB", {
 	cb: data => {
 		const { stationId, playlistId } = data;
 
-		PlaylistsModule.runJob("GET_PLAYLIST", { playlistId }).then(playlist => {
-			WSModule.runJob("EMIT_TO_ROOM", {
-				room: `station.${stationId}`,
+		PlaylistsModule.runJob("GET_PLAYLIST", { playlistId }).then(playlist =>
+			WSModule.runJob("EMIT_TO_ROOMS", {
+				rooms: [`station.${stationId}`, `manage-station.${stationId}`],
 				args: ["event:station.includedPlaylist", { data: { stationId, playlist } }]
-			});
-
-			WSModule.runJob("EMIT_TO_ROOM", {
-				room: `manage-station.${stationId}`,
-				args: ["event:station.includedPlaylist", { data: { stationId, playlist } }]
-			});
-		});
+			})
+		);
 	}
 });
 
@@ -187,17 +182,12 @@ CacheModule.runJob("SUB", {
 	cb: data => {
 		const { stationId, playlistId } = data;
 
-		PlaylistsModule.runJob("GET_PLAYLIST", { playlistId }).then(playlist => {
-			WSModule.runJob("EMIT_TO_ROOM", {
-				room: `station.${stationId}`,
+		PlaylistsModule.runJob("GET_PLAYLIST", { playlistId }).then(playlist =>
+			WSModule.runJob("EMIT_TO_ROOMS", {
+				rooms: [`station.${stationId}`, `manage-station.${stationId}`],
 				args: ["event:station.excludedPlaylist", { data: { stationId, playlist } }]
-			});
-
-			WSModule.runJob("EMIT_TO_ROOM", {
-				room: `manage-station.${stationId}`,
-				args: ["event:station.excludedPlaylist", { data: { stationId, playlist } }]
-			});
-		});
+			})
+		);
 	}
 });
 
@@ -205,13 +195,8 @@ CacheModule.runJob("SUB", {
 	channel: "station.removedIncludedPlaylist",
 	cb: data => {
 		const { stationId, playlistId } = data;
-		WSModule.runJob("EMIT_TO_ROOM", {
-			room: `station.${stationId}`,
-			args: ["event:station.removedIncludedPlaylist", { data: { stationId, playlistId } }]
-		});
-
-		WSModule.runJob("EMIT_TO_ROOM", {
-			room: `manage-station.${stationId}`,
+		WSModule.runJob("EMIT_TO_ROOMS", {
+			rooms: [`station.${stationId}`, `manage-station.${stationId}`],
 			args: ["event:station.removedIncludedPlaylist", { data: { stationId, playlistId } }]
 		});
 	}
@@ -221,13 +206,8 @@ CacheModule.runJob("SUB", {
 	channel: "station.removedExcludedPlaylist",
 	cb: data => {
 		const { stationId, playlistId } = data;
-		WSModule.runJob("EMIT_TO_ROOM", {
-			room: `station.${stationId}`,
-			args: ["event:station.removedExcludedPlaylist", { data: { stationId, playlistId } }]
-		});
-
-		WSModule.runJob("EMIT_TO_ROOM", {
-			room: `manage-station.${stationId}`,
+		WSModule.runJob("EMIT_TO_ROOMS", {
+			rooms: [`station.${stationId}`, `manage-station.${stationId}`],
 			args: ["event:station.removedExcludedPlaylist", { data: { stationId, playlistId } }]
 		});
 	}
@@ -366,13 +346,8 @@ CacheModule.runJob("SUB", {
 			});
 		});
 
-		WSModule.runJob("EMIT_TO_ROOM", {
-			room: `station.${stationId}`,
-			args: ["event:station.name.updated", { data: { stationId, name } }]
-		});
-
-		WSModule.runJob("EMIT_TO_ROOM", {
-			room: `manage-station.${stationId}`,
+		WSModule.runJob("EMIT_TO_ROOMS", {
+			rooms: [`station.${stationId}`, `manage-station.${stationId}`],
 			args: ["event:station.name.updated", { data: { stationId, name } }]
 		});
 	}
@@ -395,13 +370,8 @@ CacheModule.runJob("SUB", {
 			})
 		);
 
-		WSModule.runJob("EMIT_TO_ROOM", {
-			room: `station.${stationId}`,
-			args: ["event:station.displayName.updated", { data: { stationId, displayName } }]
-		});
-
-		WSModule.runJob("EMIT_TO_ROOM", {
-			room: `manage-station.${stationId}`,
+		WSModule.runJob("EMIT_TO_ROOMS", {
+			rooms: [`station.${stationId}`, `manage-station.${stationId}`],
 			args: ["event:station.displayName.updated", { data: { stationId, displayName } }]
 		});
 	}
@@ -424,13 +394,8 @@ CacheModule.runJob("SUB", {
 			})
 		);
 
-		WSModule.runJob("EMIT_TO_ROOM", {
-			room: `station.${stationId}`,
-			args: ["event:station.description.updated", { data: { stationId, description } }]
-		});
-
-		WSModule.runJob("EMIT_TO_ROOM", {
-			room: `manage-station.${stationId}`,
+		WSModule.runJob("EMIT_TO_ROOMS", {
+			rooms: [`station.${stationId}`, `manage-station.${stationId}`],
 			args: ["event:station.description.updated", { data: { stationId, description } }]
 		});
 	}
@@ -485,13 +450,8 @@ CacheModule.runJob("SUB", {
 CacheModule.runJob("SUB", {
 	channel: "station.repositionSongInQueue",
 	cb: res => {
-		WSModule.runJob("EMIT_TO_ROOM", {
-			room: `station.${res.stationId}`,
-			args: ["event:station.queue.song.repositioned", { data: { song: res.song } }]
-		});
-
-		WSModule.runJob("EMIT_TO_ROOM", {
-			room: `manage-station.${res.stationId}`,
+		WSModule.runJob("EMIT_TO_ROOMS", {
+			rooms: [`station.${res.stationId}`, `manage-station.${res.stationId}`],
 			args: ["event:station.queue.song.repositioned", { data: { song: res.song } }]
 		});
 	}
@@ -532,20 +492,20 @@ CacheModule.runJob("SUB", {
 	cb: async stationId => {
 		const userModel = await DBModule.runJob("GET_MODEL", { modelName: "user" });
 
-		StationsModule.runJob("INITIALIZE_STATION", { stationId }).then(async response => {
-			const { station } = response;
+		StationsModule.runJob("INITIALIZE_STATION", { stationId }).then(async res => {
+			const { station } = res;
 			station.userCount = StationsModule.usersPerStationCount[stationId] || 0;
 
 			WSModule.runJob("EMIT_TO_ROOM", {
 				room: "admin.stations",
 				args: ["event:admin.station.created", { data: { station } }]
-			}).then(() => {});
+			});
 
 			if (station.privacy === "public")
 				WSModule.runJob("EMIT_TO_ROOM", {
 					room: "home",
 					args: ["event:station.created", { data: { station } }]
-				}).then(() => {});
+				});
 			else {
 				const sockets = await WSModule.runJob("GET_SOCKETS_FOR_ROOM", {
 					room: "home"
@@ -2653,12 +2613,7 @@ export default {
 				next => {
 					stationModel.findOne(
 						{
-							$or: [
-								{ name: data.name },
-								{
-									displayName: new RegExp(`^${data.displayName}$`, "i")
-								}
-							]
+							$or: [{ name: data.name }, { displayName: new RegExp(`^${data.displayName}$`, "i") }]
 						},
 						next
 					);
@@ -2851,7 +2806,6 @@ export default {
 					if (station.type !== "official") return next(null, station);
 
 					const stationId = station._id;
-					console.log(111, station, genrePlaylistIds, blacklistedGenrePlaylistIds, next);
 
 					return async.waterfall(
 						[
@@ -2861,9 +2815,7 @@ export default {
 									1,
 									(playlistId, next) => {
 										StationsModule.runJob("INCLUDE_PLAYLIST", { stationId, playlistId }, this)
-											.then(() => {
-												next();
-											})
+											.then(() => next())
 											.catch(next);
 									},
 									next
@@ -2876,9 +2828,7 @@ export default {
 									1,
 									(playlistId, next) => {
 										StationsModule.runJob("EXCLUDE_PLAYLIST", { stationId, playlistId }, this)
-											.then(() => {
-												next();
-											})
+											.then(() => next())
 											.catch(next);
 									},
 									next
@@ -3300,10 +3250,7 @@ export default {
 						.catch(err => next(err));
 				},
 
-				(station, next) => {
-					if (station.type === "official") next(null, station.queue);
-					else next(null, station.queue);
-				}
+				(station, next) => next(null, station.queue)
 			],
 			async (err, queue) => {
 				if (err) {

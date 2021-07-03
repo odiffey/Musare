@@ -9,10 +9,7 @@
 					><img src="/assets/blue_wordmark.png" alt="Musare"
 				/></a>
 				<div id="footer-links">
-					<a
-						:href="`${this.github}`"
-						target="_blank"
-						title="GitHub Repository"
+					<a :href="github" target="_blank" title="GitHub Repository"
 						>GitHub</a
 					>
 					<router-link title="About Musare" to="/about"
@@ -88,6 +85,7 @@ export default {
 		margin-right: auto;
 		width: 160px;
 		order: 1;
+		user-select: none;
 	}
 
 	#footer-links {

@@ -5,7 +5,7 @@
 			<p>
 				<span>Sets loaded: {{ setsLoaded }} / {{ maxSets }}</span>
 				<br />
-				<span>Loaded songs: {{ this.songs.length }}</span>
+				<span>Loaded songs: {{ songs.length }}</span>
 			</p>
 			<input
 				v-model="searchQuery"
@@ -26,6 +26,9 @@
 				@dblclick="resetKeyboardShortcutsHelper"
 			>
 				Keyboard shortcuts helper
+			</button>
+			<button class="button is-primary" @click="openModal('requestSong')">
+				Request song
 			</button>
 			<br />
 			<br />
@@ -86,37 +89,46 @@
 							/>
 						</td>
 						<td class="optionsColumn">
-							<button
-								class="button is-primary"
-								@click="edit(song, index)"
-								content="Edit Song"
-								v-tippy
-							>
-								<i class="material-icons">edit</i>
-							</button>
-							<button
-								class="button is-success"
-								@click="verify(song._id)"
-								content="Verify Song"
-								v-tippy
-							>
-								<i class="material-icons">check_circle</i>
-							</button>
-							<confirm placement="left" @confirm="hide(song._id)">
+							<div>
 								<button
-									class="button is-danger"
-									content="Hide Song"
+									class="button is-primary"
+									@click="edit(song, index)"
+									content="Edit Song"
 									v-tippy
 								>
-									<i class="material-icons">visibility_off</i>
+									<i class="material-icons">edit</i>
 								</button>
-							</confirm>
+								<button
+									class="button is-success"
+									@click="verify(song._id)"
+									content="Verify Song"
+									v-tippy
+								>
+									<i class="material-icons">check_circle</i>
+								</button>
+								<confirm
+									placement="left"
+									@confirm="hide(song._id)"
+								>
+									<button
+										class="button is-danger"
+										content="Hide Song"
+										v-tippy
+									>
+										<i class="material-icons"
+											>visibility_off</i
+										>
+									</button>
+								</confirm>
+							</div>
 						</td>
 					</tr>
 				</tbody>
 			</table>
 		</div>
+		<import-album v-if="modals.importAlbum" />
 		<edit-song v-if="modals.editSong" />
+		<request-song v-if="modals.requestSong" />
 		<floating-box
 			id="keyboardShortcutsHelper"
 			ref="keyboardShortcutsHelper"
@@ -183,6 +195,7 @@
 
 <script>
 import { mapState, mapActions, mapGetters } from "vuex";
+import { defineAsyncComponent } from "vue";
 
 import Toast from "toasters";
 
@@ -196,7 +209,15 @@ import ws from "@/ws";
 
 export default {
 	components: {
-		EditSong: () => import("@/components/modals/EditSong"),
+		EditSong: defineAsyncComponent(() =>
+			import("@/components/modals/EditSong")
+		),
+		ImportAlbum: defineAsyncComponent(() =>
+			import("@/components/modals/ImportAlbum.vue")
+		),
+		RequestSong: defineAsyncComponent(() =>
+			import("@/components/modals/RequestSong.vue")
+		),
 		UserIdToUsername,
 		FloatingBox,
 		Confirm
@@ -225,12 +246,6 @@ export default {
 		...mapGetters({
 			socket: "websockets/getSocket"
 		})
-	},
-	watch: {
-		// eslint-disable-next-line func-names
-		"modals.editSong": function(value) {
-			if (value === false) this.stopVideo();
-		}
 	},
 	mounted() {
 		this.socket.on("event:admin.unverifiedSong.created", res => {
@@ -326,7 +341,7 @@ export default {
 			"removeSong",
 			"updateSong"
 		]),
-		...mapActions("modals/editSong", ["editSong", "stopVideo"]),
+		...mapActions("modals/editSong", ["editSong"]),
 		...mapActions("modalVisibility", ["openModal"])
 	}
 };
@@ -361,8 +376,15 @@ export default {
 
 .optionsColumn {
 	width: 140px;
-	button {
-		width: 35px;
+
+	div {
+		button {
+			width: 35px;
+
+			&:not(:last-child) {
+				margin-right: 5px;
+			}
+		}
 	}
 }
 

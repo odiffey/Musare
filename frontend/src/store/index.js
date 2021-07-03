@@ -1,6 +1,5 @@
 /* eslint-disable import/no-cycle */
-import Vue from "vue";
-import Vuex from "vuex";
+import { createStore } from "vuex";
 
 import websockets from "./modules/websockets";
 
@@ -11,6 +10,7 @@ import station from "./modules/station";
 import admin from "./modules/admin";
 
 import editSongModal from "./modules/modals/editSong";
+import importAlbumModal from "./modules/modals/importAlbum";
 import editPlaylistModal from "./modules/modals/editPlaylist";
 import manageStationModal from "./modules/modals/manageStation";
 import editUserModal from "./modules/modals/editUser";
@@ -18,9 +18,7 @@ import viewPunishmentModal from "./modules/modals/viewPunishment";
 import viewReportModal from "./modules/modals/viewReport";
 import reportModal from "./modules/modals/report";
 
-Vue.use(Vuex);
-
-export default new Vuex.Store({
+export default createStore({
 	modules: {
 		websockets,
 		user,
@@ -32,12 +30,13 @@ export default new Vuex.Store({
 			namespaced: true,
 			modules: {
 				editSong: editSongModal,
+				importAlbum: importAlbumModal,
 				editPlaylist: editPlaylistModal,
 				manageStation: manageStationModal,
 				editUser: editUserModal,
 				viewPunishment: viewPunishmentModal,
-				viewReport: viewReportModal,
-				report: reportModal
+				report: reportModal,
+				viewReport: viewReportModal
 			}
 		}
 	},

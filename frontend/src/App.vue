@@ -10,6 +10,7 @@
 			<what-is-new v-show="modals.whatIsNew" />
 			<login-modal v-if="modals.login" />
 			<register-modal v-if="modals.register" />
+			<create-playlist-modal v-if="modals.createPlaylist" />
 		</div>
 	</div>
 </template>
@@ -17,6 +18,7 @@
 <script>
 import { mapState, mapActions, mapGetters } from "vuex";
 import Toast from "toasters";
+import { defineAsyncComponent } from "vue";
 
 import ws from "./ws";
 import aw from "./aw";
@@ -24,10 +26,19 @@ import keyboardShortcuts from "./keyboardShortcuts";
 
 export default {
 	components: {
-		WhatIsNew: () => import("@/components/modals/WhatIsNew.vue"),
-		LoginModal: () => import("@/components/modals/Login.vue"),
-		RegisterModal: () => import("@/components/modals/Register.vue"),
-		Banned: () => import("@/pages/Banned.vue")
+		WhatIsNew: defineAsyncComponent(() =>
+			import("@/components/modals/WhatIsNew.vue")
+		),
+		LoginModal: defineAsyncComponent(() =>
+			import("@/components/modals/Login.vue")
+		),
+		RegisterModal: defineAsyncComponent(() =>
+			import("@/components/modals/Register.vue")
+		),
+		CreatePlaylistModal: defineAsyncComponent(() =>
+			import("@/components/modals/CreatePlaylist.vue")
+		),
+		Banned: defineAsyncComponent(() => import("@/pages/Banned.vue"))
 	},
 	replace: false,
 	data() {
@@ -90,6 +101,29 @@ export default {
 			this.keyIsDown = "";
 		};
 
+		// ctrl + alt + n
+		keyboardShortcuts.registerShortcut("nightmode", {
+			keyCode: 78,
+			ctrl: true,
+			alt: true,
+			handler: () => {
+				localStorage.setItem("nightmode", !this.nightmode);
+
+				if (this.loggedIn) {
+					this.socket.dispatch(
+						"users.updatePreferences",
+						{ nightmode: !this.nightmode },
+						res => {
+							if (res.status !== "success")
+								new Toast(res.message);
+						}
+					);
+				}
+
+				this.changeNightmode(!this.nightmode);
+			}
+		});
+
 		keyboardShortcuts.registerShortcut("closeModal", {
 			keyCode: 27,
 			shift: false,
@@ -123,7 +157,7 @@ export default {
 
 		this.apiDomain = await lofig.get("apiDomain");
 
-		this.$router.onReady(() => {
+		this.$router.isReady(() => {
 			if (this.$route.query.err) {
 				let { err } = this.$route.query;
 				err = err
@@ -141,6 +175,11 @@ export default {
 				new Toast({ content: msg, timeout: 20000 });
 			}
 		});
+
+		if (localStorage.getItem("nightmode") === "true") {
+			this.changeNightmode(true);
+			this.enableNightMode();
+		}
 
 		this.socket.dispatch("users.getPreferences", res => {
 			if (res.status === "success") {
@@ -164,9 +203,6 @@ export default {
 		);
 	},
 	methods: {
-		submitOnEnter: (cb, event) => {
-			if (event.which === 13) cb();
-		},
 		enableNightMode: () => {
 			document
 				.getElementsByTagName("body")[0]
@@ -190,6 +226,9 @@ export default {
 </script>
 
 <style lang="scss">
+@import "tippy.js/dist/tippy.css";
+@import "tippy.js/animations/scale.css";
+
 :root {
 	--primary-color: var(--blue);
 	--blue: rgb(2, 166, 242);
@@ -260,7 +299,7 @@ export default {
 		background-color: var(--dark-grey-3) !important;
 	}
 
-	.tippy-tooltip.songActions-theme {
+	.tippy-box[data-theme~="songActions"] {
 		background-color: var(--dark-grey);
 	}
 }
@@ -317,12 +356,27 @@ textarea {
 	font-family: "Inter", Helvetica, Arial, sans-serif;
 }
 
+#page-title {
+	margin-top: 0;
+	font-size: 35px;
+	text-align: center;
+}
+
+@media only screen and (min-width: 700px) {
+	#page-title {
+		margin: 0;
+		margin-bottom: 30px;
+		font-size: 40px;
+	}
+}
+
 .upper-container {
 	height: 100%;
 }
 
 .main-container {
 	height: 100%;
+	min-height: 100vh;
 	display: flex;
 	flex-direction: column;
 
@@ -365,22 +419,22 @@ a {
 	z-index: 10000000;
 }
 
-.tippy-tooltip.dark-theme {
-	font-size: 14px;
-	padding: 5px 10px;
-}
 .night-mode {
-	.tippy-tooltip {
-		&.dark-theme {
-			border: 1px solid var(--light-grey-3);
-			box-shadow: 0 14px 28px rgba(0, 0, 0, 0.25),
-				0 10px 10px rgba(0, 0, 0, 0.22);
-			background-color: white;
-			.tippy-content {
-				color: var(--black);
-			}
+	.tippy-box {
+		border: 1px solid var(--light-grey-3);
+		box-shadow: 0 14px 28px rgba(0, 0, 0, 0.25),
+			0 10px 10px rgba(0, 0, 0, 0.22);
+		background-color: var(--white);
+
+		&:not([data-theme~="songActions"]) > .tippy-arrow::before {
+			border-top-color: var(--white);
 		}
-		&.songActions-theme {
+
+		.tippy-content {
+			color: var(--black);
+		}
+
+		&[data-theme~="songActions"] {
 			background-color: var(--dark-grey-2);
 			border: 0 !important;
 
@@ -393,7 +447,7 @@ a {
 				background-color: var(--white);
 			}
 		}
-		&.addToPlaylist-theme {
+		&[data-theme~="addToPlaylist"] {
 			background-color: var(--dark-grey-2);
 			border: 0 !important;
 
@@ -413,64 +467,63 @@ a {
 		}
 	}
 
-	.tippy-popper[x-placement^="top"] .tippy-tooltip {
-		&.songActions-theme,
-		&.addToPlaylist-theme {
-			.tippy-arrow {
+	.tippy-box[data-placement^="top"] {
+		&[data-theme~="songActions"],
+		&[data-theme~="addToPlaylist"] {
+			> .tippy-arrow::before {
 				border-top-color: var(--dark-grey-2);
 			}
 		}
-		&.dark-theme .tippy-arrow {
-			border-top-color: var(--white);
-		}
 	}
-	.tippy-popper[x-placement^="bottom"] .tippy-tooltip {
-		&.songActions-theme,
-		&.addToPlaylist-theme {
-			.tippy-arrow {
+
+	.tippy-box[data-placement^="bottom"] {
+		&[data-theme~="songActions"],
+		&[data-theme~="addToPlaylist"] {
+			> .tippy-arrow::before {
 				border-bottom-color: var(--dark-grey-2);
 			}
 		}
-		&.dark-theme .tippy-arrow {
-			border-bottom-color: var(--white);
-		}
 	}
-	.tippy-popper[x-placement^="left"] .tippy-tooltip {
-		&.songActions-theme,
-		&.addToPlaylist-theme {
-			.tippy-arrow {
+
+	.tippy-box[data-placement^="left"] {
+		&[data-theme~="songActions"],
+		&[data-theme~="addToPlaylist"] {
+			> .tippy-arrow::before {
 				border-left-color: var(--dark-grey-2);
 			}
 		}
-		&.dark-theme .tippy-arrow {
-			border-left-color: var(--white);
-		}
 	}
-	.tippy-popper[x-placement^="right"] .tippy-tooltip {
-		&.songActions-theme,
-		&.addToPlaylist-theme {
-			.tippy-arrow {
+
+	.tippy-box[data-placement^="right"] {
+		&[data-theme~="songActions"],
+		&[data-theme~="addToPlaylist"] {
+			> .tippy-arrow::before {
 				border-right-color: var(--dark-grey-2);
 			}
-		}
-		&.dark-theme .tippy-arrow {
-			border-right-color: var(--white);
 		}
 	}
 }
 
-.tippy-tooltip.info-theme {
+.tippy-box[data-theme~="info"] {
 	font-size: 12px;
 	letter-spacing: 1px;
 }
 
-.tippy-tooltip.confirm-theme {
+.tippy-box[data-theme~="confirm"] {
 	background-color: var(--red);
-	padding: 5px 10px;
+
+	.tippy-content {
+		padding: 0;
+	}
+
 	a {
+		padding: 15px;
+		line-height: 25px;
 		color: var(--white);
+		border-bottom: 0;
 		font-size: 15px;
 		font-weight: 600;
+
 		&:hover,
 		&:focus {
 			filter: brightness(90%);
@@ -478,7 +531,7 @@ a {
 	}
 }
 
-.tippy-tooltip.songActions-theme {
+.tippy-box[data-theme~="songActions"] {
 	font-size: 15px;
 	padding: 5px 10px;
 	border: 1px solid var(--light-grey-3);
@@ -487,16 +540,6 @@ a {
 
 	.button {
 		width: 146px;
-	}
-
-	.song-actions,
-	.addToPlaylistDropdown,
-	.song-actions > div {
-		display: inline-block;
-	}
-
-	.addToPlaylistDropdown .tippy-popper {
-		max-width: unset;
 	}
 
 	i,
@@ -541,52 +584,55 @@ a {
 	}
 }
 
-.tippy-popper[x-placement^="top"] .tippy-tooltip {
-	&.songActions-theme,
-	&.addToPlaylist-theme {
-		.tippy-arrow {
+.tippy-box[data-placement^="top"] {
+	&[data-theme~="songActions"],
+	&[data-theme~="addToPlaylist"] {
+		> .tippy-arrow::before {
 			border-top-color: var(--white);
 		}
 	}
-	&.confirm-theme .tippy-arrow {
+	&[data-theme~="confirm"] > .tippy-arrow::before {
 		border-top-color: var(--red);
 	}
 }
-.tippy-popper[x-placement^="bottom"] .tippy-tooltip {
-	&.songActions-theme,
-	&.addToPlaylist-theme {
-		.tippy-arrow {
+
+.tippy-box[data-placement^="bottom"] {
+	&[data-theme~="songActions"],
+	&[data-theme~="addToPlaylist"] {
+		> .tippy-arrow::before {
 			border-bottom-color: var(--white);
 		}
 	}
-	&.confirm-theme .tippy-arrow {
+	&[data-theme~="confirm"] > .tippy-arrow::before {
 		border-bottom-color: var(--red);
 	}
 }
-.tippy-popper[x-placement^="left"] .tippy-tooltip {
-	&.songActions-theme,
-	&.addToPlaylist-theme {
-		.tippy-arrow {
+
+.tippy-box[data-placement^="left"] {
+	&[data-theme~="songActions"],
+	&[data-theme~="addToPlaylist"] {
+		> .tippy-arrow::before {
 			border-left-color: var(--white);
 		}
 	}
-	&.confirm-theme .tippy-arrow {
+	&[data-theme~="confirm"] > .tippy-arrow::before {
 		border-left-color: var(--red);
 	}
 }
-.tippy-popper[x-placement^="right"] .tippy-tooltip {
-	&.songActions-theme,
-	&.addToPlaylist-theme {
-		.tippy-arrow {
+
+.tippy-box[data-placement^="right"] {
+	&[data-theme~="songActions"],
+	&[data-theme~="addToPlaylist"] {
+		> .tippy-arrow::before {
 			border-right-color: var(--white);
 		}
 	}
-	&.confirm-theme .tippy-arrow {
+	&[data-theme~="confirm"] > .tippy-arrow::before {
 		border-right-color: var(--red);
 	}
 }
 
-.tippy-tooltip.addToPlaylist-theme {
+.tippy-box[data-theme~="addToPlaylist"] {
 	font-size: 15px;
 	padding: 5px;
 	border: 1px solid var(--light-grey-3);
@@ -675,7 +721,7 @@ a {
 			}
 		}
 	}
-	.tippy-content > div {
+	.tippy-content > span {
 		display: flex;
 		flex-direction: column;
 		button {
@@ -899,24 +945,30 @@ h4.section-title {
 			color: var(--primary-color);
 		}
 
-		.song-actions {
+		.icons-group {
 			display: flex;
+			align-items: center;
+
+			a {
+				padding: 0;
+			}
 		}
 
 		.button {
 			width: 146px;
 		}
 
-		i {
+		i,
+		span {
 			cursor: pointer;
-			color: var(--dark-grey);
+			// color: var(--dark-grey);
 
 			&:hover,
 			&:focus {
 				filter: brightness(90%);
 			}
 
-			&:not(:first-of-type) {
+			&:not(:first-child) {
 				margin-left: 5px;
 			}
 		}
@@ -1164,6 +1216,65 @@ h4.section-title {
 
 	code {
 		font-style: italic;
+	}
+}
+.checkbox-control {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+
+	p {
+		margin-left: 10px;
+	}
+
+	.switch {
+		position: relative;
+		display: inline-block;
+		flex-shrink: 0;
+		width: 40px;
+		height: 24px;
+	}
+
+	.switch input {
+		opacity: 0;
+		width: 0;
+		height: 0;
+	}
+
+	.slider {
+		position: absolute;
+		cursor: pointer;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background-color: #ccc;
+		transition: 0.2s;
+		border-radius: 34px;
+	}
+
+	.slider:before {
+		position: absolute;
+		content: "";
+		height: 16px;
+		width: 16px;
+		left: 4px;
+		bottom: 4px;
+		background-color: white;
+		transition: 0.2s;
+		border-radius: 50%;
+	}
+
+	input:checked + .slider {
+		background-color: var(--primary-color);
+	}
+
+	input:focus + .slider {
+		box-shadow: 0 0 1px var(--primary-color);
+	}
+
+	input:checked + .slider:before {
+		transform: translateX(16px);
 	}
 }
 </style>

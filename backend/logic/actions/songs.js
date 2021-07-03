@@ -20,17 +20,12 @@ CacheModule.runJob("SUB", {
 			modelName: "song"
 		});
 
-		songModel.findOne({ _id: songId }, (err, song) => {
-			WSModule.runJob("EMIT_TO_ROOM", {
-				room: "admin.unverifiedSongs",
+		songModel.findOne({ _id: songId }, (err, song) =>
+			WSModule.runJob("EMIT_TO_ROOMS", {
+				rooms: ["admin.unverifiedSongs", `edit-song.${songId}`],
 				args: ["event:admin.unverifiedSong.created", { data: { song } }]
-			});
-
-			WSModule.runJob("EMIT_TO_ROOM", {
-				room: `edit-song.${songId}`,
-				args: ["event:admin.unverifiedSong.created", { data: { song } }]
-			});
-		});
+			})
+		);
 	}
 });
 
@@ -64,17 +59,13 @@ CacheModule.runJob("SUB", {
 	channel: "song.newVerifiedSong",
 	cb: async songId => {
 		const songModel = await DBModule.runJob("GET_MODEL", { modelName: "song" });
-		songModel.findOne({ _id: songId }, (err, song) => {
-			WSModule.runJob("EMIT_TO_ROOM", {
-				room: "admin.songs",
-				args: ["event:admin.verifiedSong.created", { data: { song } }]
-			});
 
-			WSModule.runJob("EMIT_TO_ROOM", {
-				room: `edit-song.${songId}`,
+		songModel.findOne({ _id: songId }, (err, song) =>
+			WSModule.runJob("EMIT_TO_ROOMS", {
+				rooms: ["admin.songs", `edit-song.${songId}`],
 				args: ["event:admin.verifiedSong.created", { data: { song } }]
-			});
-		});
+			})
+		);
 	}
 });
 
@@ -108,17 +99,12 @@ CacheModule.runJob("SUB", {
 			modelName: "song"
 		});
 
-		songModel.findOne({ _id: songId }, (err, song) => {
-			WSModule.runJob("EMIT_TO_ROOM", {
-				room: "admin.hiddenSongs",
+		songModel.findOne({ _id: songId }, (err, song) =>
+			WSModule.runJob("EMIT_TO_ROOMS", {
+				rooms: ["admin.hiddenSongs", `edit-song.${songId}`],
 				args: ["event:admin.hiddenSong.created", { data: { song } }]
-			});
-
-			WSModule.runJob("EMIT_TO_ROOM", {
-				room: `edit-song.${songId}`,
-				args: ["event:admin.hiddenSong.created", { data: { song } }]
-			});
-		});
+			})
+		);
 	}
 });
 
@@ -358,45 +344,13 @@ export default {
 	}),
 
 	/**
-	 * Gets a song from the YouTube song id
-	 *
-	 * @param {object} session - the session object automatically added by the websocket
-	 * @param {string} youtubeId - the YouTube song id
-	 * @param {Function} cb
-	 */
-	getSong: isAdminRequired(function getSong(session, youtubeId, cb) {
-		async.waterfall(
-			[
-				next => {
-					SongsModule.runJob("GET_SONG_FROM_YOUTUBE_ID", { youtubeId }, this)
-						.then(song => {
-							next(null, song);
-						})
-						.catch(err => {
-							next(err);
-						});
-				}
-			],
-			async (err, song) => {
-				if (err) {
-					err = await UtilsModule.runJob("GET_ERROR", { error: err }, this);
-					this.log("ERROR", "SONGS_GET_SONG", `Failed to get song ${youtubeId}. "${err}"`);
-					return cb({ status: "error", message: err });
-				}
-				this.log("SUCCESS", "SONGS_GET_SONG", `Got song ${youtubeId} successfully.`);
-				return cb({ status: "success", data: { song } });
-			}
-		);
-	}),
-
-	/**
 	 * Gets a song from the Musare song id
 	 *
 	 * @param {object} session - the session object automatically added by the websocket
 	 * @param {string} songId - the song id
 	 * @param {Function} cb
 	 */
-	getSongFromSongId: isAdminRequired(function getSong(session, songId, cb) {
+	getSongFromSongId: isAdminRequired(function getSongFromSongId(session, songId, cb) {
 		async.waterfall(
 			[
 				next => {
@@ -416,62 +370,6 @@ export default {
 			}
 		);
 	}),
-
-	/**
-	 * Obtains basic metadata of a song in order to format an activity
-	 *
-	 * @param {object} session - the session object automatically added by the websocket
-	 * @param {string} youtubeId - the youtube song id
-	 * @param {Function} cb - callback
-	 */
-	getSongForActivity(session, youtubeId, cb) {
-		async.waterfall(
-			[
-				next => {
-					SongsModule.runJob("GET_SONG_FROM_YOUTUBE_ID", { youtubeId }, this)
-						.then(response => next(null, response.song))
-						.catch(next);
-				}
-			],
-			async (err, song) => {
-				if (err) {
-					err = await UtilsModule.runJob("GET_ERROR", { error: err }, this);
-
-					this.log(
-						"ERROR",
-						"SONGS_GET_SONG_FOR_ACTIVITY",
-						`Failed to obtain metadata of song ${youtubeId} for activity formatting. "${err}"`
-					);
-
-					return cb({ status: "error", message: err });
-				}
-
-				if (song) {
-					this.log(
-						"SUCCESS",
-						"SONGS_GET_SONG_FOR_ACTIVITY",
-						`Obtained metadata of song ${youtubeId} for activity formatting successfully.`
-					);
-
-					return cb({
-						status: "success",
-						data: {
-							title: song.title,
-							thumbnail: song.thumbnail
-						}
-					});
-				}
-
-				this.log(
-					"ERROR",
-					"SONGS_GET_SONG_FOR_ACTIVITY",
-					`Song ${youtubeId} does not exist so failed to obtain for activity formatting.`
-				);
-
-				return cb({ status: "error" });
-			}
-		);
-	},
 
 	/**
 	 * Updates a song
@@ -671,11 +569,12 @@ export default {
 	 *
 	 * @param {object} session - the session object automatically added by the websocket
 	 * @param {string} youtubeId - the youtube id of the song that gets requested
+	 * @param {string} returnSong - returns the simple song
 	 * @param {Function} cb - gets called with the result
 	 */
-	request: isLoginRequired(async function add(session, youtubeId, cb) {
+	request: isLoginRequired(async function add(session, youtubeId, returnSong, cb) {
 		SongsModule.runJob("REQUEST_SONG", { youtubeId, userId: session.userId }, this)
-			.then(() => {
+			.then(response => {
 				this.log(
 					"SUCCESS",
 					"SONGS_REQUEST",
@@ -683,17 +582,18 @@ export default {
 				);
 				return cb({
 					status: "success",
-					message: "Successfully requested that song"
+					message: "Successfully requested that song",
+					song: returnSong ? response.song : null
 				});
 			})
-			.catch(async err => {
-				err = await UtilsModule.runJob("GET_ERROR", { error: err }, this);
+			.catch(async _err => {
+				const err = await UtilsModule.runJob("GET_ERROR", { error: _err }, this);
 				this.log(
 					"ERROR",
 					"SONGS_REQUEST",
 					`Requesting song "${youtubeId}" failed for user ${session.userId}. "${err}"`
 				);
-				return cb({ status: "error", message: err });
+				return cb({ status: "error", message: err, song: returnSong && _err.data ? _err.data.song : null });
 			});
 	}),
 
@@ -768,15 +668,16 @@ export default {
 				},
 
 				(song, next) => {
+					const oldStatus = song.status;
+
 					song.verifiedBy = session.userId;
 					song.verifiedAt = Date.now();
 					song.status = "verified";
-					song.save(err => {
-						next(err, song);
-					});
+
+					song.save(err => next(err, song, oldStatus));
 				},
 
-				(song, next) => {
+				(song, oldStatus, next) => {
 					song.genres.forEach(genre => {
 						PlaylistsModule.runJob("AUTOFILL_GENRE_PLAYLIST", { genre })
 							.then(() => {})
@@ -784,20 +685,23 @@ export default {
 					});
 
 					SongsModule.runJob("UPDATE_SONG", { songId: song._id });
-
-					next(null, song);
+					next(null, song, oldStatus);
 				}
 			],
-			async (err, song) => {
+			async (err, song, oldStatus) => {
 				if (err) {
 					err = await UtilsModule.runJob("GET_ERROR", { error: err }, this);
-
 					this.log("ERROR", "SONGS_VERIFY", `User "${session.userId}" failed to verify song. "${err}"`);
-
 					return cb({ status: "error", message: err });
 				}
 
 				this.log("SUCCESS", "SONGS_VERIFY", `User "${session.userId}" successfully verified song "${songId}".`);
+
+				if (oldStatus === "hidden")
+					CacheModule.runJob("PUB", {
+						channel: "song.removedHiddenSong",
+						value: song._id
+					});
 
 				CacheModule.runJob("PUB", {
 					channel: "song.newVerifiedSong",
@@ -899,7 +803,7 @@ export default {
 	 * @param {boolean} musicOnly - whether to only get music from the playlist
 	 * @param {Function} cb - gets called with the result
 	 */
-	requestSet: isLoginRequired(function requestSet(session, url, musicOnly, cb) {
+	requestSet: isLoginRequired(function requestSet(session, url, musicOnly, returnSongs, cb) {
 		async.waterfall(
 			[
 				next => {
@@ -918,22 +822,23 @@ export default {
 				},
 				(youtubeIds, next) => {
 					let successful = 0;
+					let songs = {};
 					let failed = 0;
 					let alreadyInDatabase = 0;
 
 					if (youtubeIds.length === 0) next();
 
-					async.eachLimit(
+					async.eachOfLimit(
 						youtubeIds,
 						1,
-						(youtubeId, next) => {
+						(youtubeId, index, next) => {
 							WSModule.runJob(
 								"RUN_ACTION2",
 								{
 									session,
 									namespace: "songs",
 									action: "request",
-									args: [youtubeId]
+									args: [youtubeId, returnSongs]
 								},
 								this
 							)
@@ -941,6 +846,8 @@ export default {
 									if (res.status === "success") successful += 1;
 									else failed += 1;
 									if (res.message === "This song is already in the database.") alreadyInDatabase += 1;
+									if (res.song) songs[index] = res.song;
+									else songs[index] = null;
 								})
 								.catch(() => {
 									failed += 1;
@@ -950,7 +857,12 @@ export default {
 								});
 						},
 						() => {
-							next(null, { successful, failed, alreadyInDatabase });
+							if (returnSongs)
+								songs = Object.keys(songs)
+									.sort()
+									.map(key => songs[key]);
+
+							next(null, { successful, failed, alreadyInDatabase, songs });
 						}
 					);
 				}
@@ -972,7 +884,8 @@ export default {
 				);
 				return cb({
 					status: "success",
-					message: `Playlist is done importing. ${response.successful} were added succesfully, ${response.failed} failed (${response.alreadyInDatabase} were already in database)`
+					message: `Playlist is done importing. ${response.successful} were added succesfully, ${response.failed} failed (${response.alreadyInDatabase} were already in database)`,
+					songs: returnSongs ? response.songs : null
 				});
 			}
 		);
@@ -1510,6 +1423,54 @@ export default {
 				return cb({
 					status: "success",
 					message: "You have successfully unliked this song."
+				});
+			}
+		);
+	}),
+
+	/**
+	 * Gets song ratings
+	 *
+	 * @param session
+	 * @param songId - the Musare song id
+	 * @param cb
+	 */
+
+	getSongRatings: isLoginRequired(async function getSongRatings(session, songId, cb) {
+		async.waterfall(
+			[
+				next => {
+					SongsModule.runJob("GET_SONG", { songId }, this)
+						.then(res => next(null, res.song))
+						.catch(next);
+				},
+
+				(song, next) => {
+					next(null, {
+						likes: song.likes,
+						dislikes: song.dislikes
+					});
+				}
+			],
+			async (err, ratings) => {
+				if (err) {
+					err = await UtilsModule.runJob("GET_ERROR", { error: err }, this);
+					this.log(
+						"ERROR",
+						"SONGS_GET_RATINGS",
+						`User "${session.userId}" failed to get ratings for ${songId}. "${err}"`
+					);
+					return cb({ status: "error", message: err });
+				}
+
+				const { likes, dislikes } = ratings;
+
+				return cb({
+					status: "success",
+					data: {
+						likes,
+						dislikes
+					}
 				});
 			}
 		);

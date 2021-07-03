@@ -1,6 +1,6 @@
 <template>
 	<modal title="Request Song">
-		<div slot="body">
+		<template #body>
 			<div class="vertical-padding">
 				<!-- Choosing a song from youtube -->
 
@@ -45,21 +45,21 @@
 						:key="result.id"
 						:result="result"
 					>
-						<div slot="actions">
+						<template #actions>
 							<transition
 								name="search-query-actions"
 								mode="out-in"
 							>
 								<a
 									class="button is-success"
-									v-if="result.isAddedToQueue"
+									v-if="result.isRequested"
 									href="#"
 									key="added-to-playlist"
 								>
 									<i class="material-icons icon-with-button"
 										>done</i
 									>
-									Added to queue
+									Requested song
 								</a>
 								<a
 									class="button is-dark"
@@ -73,10 +73,10 @@
 									<i class="material-icons icon-with-button"
 										>add</i
 									>
-									Add to queue
+									Request song
 								</a>
 							</transition>
-						</div>
+						</template>
 					</search-query-item>
 
 					<a
@@ -135,7 +135,7 @@
 					</div>
 				</div>
 			</div>
-		</div>
+		</template>
 	</modal>
 </template>
 
@@ -172,20 +172,18 @@ export default {
 						if (res.status !== "success")
 							new Toast(`Error: ${res.message}`);
 						else {
-							this.search.songs.results[
-								index
-							].isAddedToQueue = true;
+							this.search.songs.results[index].isRequested = true;
 
 							new Toast(res.message);
 						}
 					}
 				);
 			} else {
-				this.socket.dispatch("songs.request", youtubeId, res => {
+				this.socket.dispatch("songs.request", youtubeId, false, res => {
 					if (res.status !== "success")
 						new Toast(`Error: ${res.message}`);
 					else {
-						this.search.songs.results[index].isAddedToQueue = true;
+						this.search.songs.results[index].isRequested = true;
 
 						new Toast(res.message);
 					}
@@ -222,6 +220,7 @@ export default {
 				"songs.requestSet",
 				this.search.playlist.query,
 				this.search.playlist.isImportingOnlyMusic,
+				false,
 				res => {
 					isImportingPlaylist = false;
 					return new Toast({ content: res.message, timeout: 20000 });

@@ -209,7 +209,13 @@ const modules = {
 		actions: {
 			editPlaylist: ({ commit }, id) => commit("editPlaylist", id),
 			setPlaylists: ({ commit }, playlists) =>
-				commit("setPlaylists", playlists)
+				commit("setPlaylists", playlists),
+			updatePlaylists: ({ commit }, playlists) =>
+				commit("updatePlaylists", playlists),
+			addPlaylist: ({ commit }, playlist) =>
+				commit("addPlaylist", playlist),
+			removePlaylist: ({ commit }, playlistId) =>
+				commit("removePlaylist", playlistId)
 		},
 		mutations: {
 			editPlaylist(state, id) {
@@ -218,6 +224,18 @@ const modules = {
 			setPlaylists(state, playlists) {
 				state.fetchedPlaylists = true;
 				state.playlists = playlists;
+			},
+			updatePlaylists(state, playlists) {
+				state.playlists = playlists;
+			},
+			addPlaylist(state, playlist) {
+				state.playlists.push(playlist);
+			},
+			removePlaylist(state, playlistId) {
+				state.playlists.forEach((playlist, index) => {
+					if (playlist._id === playlistId)
+						state.playlists.splice(index, 1);
+				});
 			}
 		}
 	},

@@ -20,7 +20,7 @@
 					</tr>
 				</thead>
 				<tbody>
-					<tr v-for="station in stations" :key="station._id">
+					<tr v-for="(station, index) in stations" :key="station._id">
 						<td>
 							<span>{{ station._id }}</span>
 						</td>
@@ -192,6 +192,7 @@
 
 <script>
 import { mapState, mapActions, mapGetters } from "vuex";
+import { defineAsyncComponent } from "vue";
 
 import Toast from "toasters";
 import UserIdToUsername from "@/components/UserIdToUsername.vue";
@@ -200,20 +201,30 @@ import ws from "@/ws";
 
 export default {
 	components: {
-		RequestSong: () => import("@/components/modals/RequestSong.vue"),
-		EditPlaylist: () => import("@/components/modals/EditPlaylist"),
-		CreatePlaylist: () => import("@/components/modals/CreatePlaylist.vue"),
-		ManageStation: () =>
-			import("@/components/modals/ManageStation/index.vue"),
-		Report: () => import("@/components/modals/Report.vue"),
-		EditSong: () => import("@/components/modals/EditSong"),
+		RequestSong: defineAsyncComponent(() =>
+			import("@/components/modals/RequestSong.vue")
+		),
+		EditPlaylist: defineAsyncComponent(() =>
+			import("@/components/modals/EditPlaylist")
+		),
+		CreatePlaylist: defineAsyncComponent(() =>
+			import("@/components/modals/CreatePlaylist.vue")
+		),
+		ManageStation: defineAsyncComponent(() =>
+			import("@/components/modals/ManageStation/index.vue")
+		),
+		Report: defineAsyncComponent(() =>
+			import("@/components/modals/Report.vue")
+		),
+		EditSong: defineAsyncComponent(() =>
+			import("@/components/modals/EditSong")
+		),
 		UserIdToUsername,
 		Confirm
 	},
 	data() {
 		return {
 			editingStationId: "",
-			manageStationVersion: "",
 			newStation: {
 				genres: [],
 				blacklistedGenres: []
@@ -232,10 +243,6 @@ export default {
 		})
 	},
 	mounted() {
-		lofig.get("manageStationVersion", manageStationVersion => {
-			this.manageStationVersion = manageStationVersion;
-		});
-
 		if (this.socket.readyState === 1) this.init();
 		ws.onConnect(() => this.init());
 
@@ -290,9 +297,7 @@ export default {
 			this.socket.dispatch(
 				"stations.remove",
 				this.stations[index]._id,
-				res => {
-					new Toast(res.message);
-				}
+				res => new Toast(res.message)
 			);
 		},
 		manage(station) {
@@ -341,6 +346,7 @@ export default {
 				if (res.status === "success")
 					this.loadStations(res.data.stations);
 			});
+
 			this.socket.dispatch("apis.joinAdminRoom", "stations", () => {});
 		},
 		...mapActions("modalVisibility", ["openModal"]),

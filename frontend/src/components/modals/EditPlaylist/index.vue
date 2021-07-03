@@ -5,200 +5,204 @@
 		"
 		class="edit-playlist-modal"
 	>
-		<div
-			slot="body"
-			:class="{
-				'view-only': !isEditable(),
-				'custom-modal-body': true
-			}"
-		>
-			<div class="left-section">
-				<div id="playlist-info-section" class="section">
-					<h3>{{ playlist.displayName }}</h3>
-					<h5>Song Count: {{ playlist.songs.length }}</h5>
-					<h5>Duration: {{ totalLength() }}</h5>
-				</div>
+		<template #body>
+			<div
+				:class="{
+					'view-only': !isEditable(),
+					'custom-modal-body': true
+				}"
+			>
+				<div class="left-section">
+					<div id="playlist-info-section" class="section">
+						<h3>{{ playlist.displayName }}</h3>
+						<h5>Song Count: {{ playlist.songs.length }}</h5>
+						<h5>Duration: {{ totalLength() }}</h5>
+					</div>
 
-				<div class="section tabs-container">
-					<div class="tab-selection">
-						<button
-							class="button is-default"
-							:class="{ selected: tab === 'settings' }"
-							ref="settings-tab"
-							@click="showTab('settings')"
+					<div class="section tabs-container">
+						<div class="tab-selection">
+							<button
+								class="button is-default"
+								:class="{ selected: tab === 'settings' }"
+								ref="settings-tab"
+								@click="showTab('settings')"
+								v-if="
+									userId === playlist.createdBy ||
+										isEditable() ||
+										(playlist.type === 'genre' && isAdmin())
+								"
+							>
+								Settings
+							</button>
+							<button
+								class="button is-default"
+								:class="{ selected: tab === 'add-songs' }"
+								ref="add-songs-tab"
+								@click="showTab('add-songs')"
+								v-if="isEditable()"
+							>
+								Add Songs
+							</button>
+							<button
+								class="button is-default"
+								:class="{
+									selected: tab === 'import-playlists'
+								}"
+								ref="import-playlists-tab"
+								@click="showTab('import-playlists')"
+								v-if="isEditable()"
+							>
+								Import Playlists
+							</button>
+						</div>
+						<settings
+							class="tab"
+							v-show="tab === 'settings'"
 							v-if="
 								userId === playlist.createdBy ||
 									isEditable() ||
 									(playlist.type === 'genre' && isAdmin())
 							"
-						>
-							Settings
-						</button>
-						<button
-							class="button is-default"
-							:class="{ selected: tab === 'youtube' }"
-							ref="youtube-tab"
-							@click="showTab('youtube')"
+						/>
+						<add-songs
+							class="tab"
+							v-show="tab === 'add-songs'"
 							v-if="isEditable()"
-						>
-							YouTube
-						</button>
+						/>
+						<import-playlists
+							class="tab"
+							v-show="tab === 'import-playlists'"
+							v-if="isEditable()"
+						/>
 					</div>
-					<settings
-						class="tab"
-						v-show="tab === 'settings'"
-						v-if="
-							userId === playlist.createdBy ||
-								isEditable() ||
-								(playlist.type === 'genre' && isAdmin())
-						"
-					/>
-					<youtube
-						class="tab"
-						v-show="tab === 'youtube'"
-						v-if="isEditable()"
-					/>
 				</div>
-			</div>
 
-			<div class="right-section">
-				<div id="rearrange-songs-section" class="section">
-					<div v-if="isEditable()">
-						<h4 class="section-title">Rearrange Songs</h4>
+				<div class="right-section">
+					<div id="rearrange-songs-section" class="section">
+						<div v-if="isEditable()">
+							<h4 class="section-title">Rearrange Songs</h4>
 
-						<p class="section-description">
-							Drag and drop songs to change their order
-						</p>
+							<p class="section-description">
+								Drag and drop songs to change their order
+							</p>
 
-						<hr class="section-horizontal-rule" />
-					</div>
+							<hr class="section-horizontal-rule" />
+						</div>
 
-					<aside class="menu">
-						<draggable
-							class="menu-list scrollable-list"
-							tag="ul"
-							v-if="playlistSongs.length > 0"
-							v-model="playlistSongs"
-							v-bind="dragOptions"
-							@start="drag = true"
-							@end="drag = false"
-							@change="repositionSong"
-						>
-							<transition-group
-								type="transition"
-								:name="
-									!drag ? 'draggable-list-transition' : null
-								"
+						<aside class="menu">
+							<draggable
+								tag="transition-group"
+								:component-data="{
+									name: !drag
+										? 'draggable-list-transition'
+										: null
+								}"
+								v-if="playlistSongs.length > 0"
+								v-model="playlistSongs"
+								item-key="_id"
+								v-bind="dragOptions"
+								@start="drag = true"
+								@end="drag = false"
+								@change="repositionSong"
 							>
-								<li
-									v-for="(song, index) in playlistSongs"
-									:key="`key-${song._id}`"
-								>
-									<song-item
-										:song="song"
-										:class="{
-											'item-draggable': isEditable()
-										}"
-									>
-										<div
-											class="song-actions"
-											slot="actions"
+								<template #item="{element, index}">
+									<div class="menu-list scrollable-list">
+										<song-item
+											:song="element"
+											:class="{
+												'item-draggable': isEditable()
+											}"
 										>
-											<i
-												class="material-icons add-to-queue-icon"
-												v-if="
-													station.partyMode &&
-														!station.locked
-												"
-												@click="
-													addSongToQueue(
-														song.youtubeId
-													)
-												"
-												content="Add Song to Queue"
-												v-tippy
-												>queue</i
-											>
-											<confirm
-												v-if="
-													userId ===
-														playlist.createdBy ||
-														isEditable()
-												"
-												placement="left"
-												@confirm="
-													removeSongFromPlaylist(
-														song.youtubeId
-													)
-												"
-											>
+											<template #actions>
 												<i
-													class="material-icons delete-icon"
-													content="Remove Song from Playlist"
+													class="material-icons add-to-queue-icon"
+													v-if="
+														station.partyMode &&
+															!station.locked
+													"
+													@click="
+														addSongToQueue(
+															element.youtubeId
+														)
+													"
+													content="Add Song to Queue"
 													v-tippy
-													>delete_forever</i
+													>queue</i
 												>
-											</confirm>
-											<i
-												class="material-icons"
-												v-if="isEditable() && index > 0"
-												@click="
-													moveSongToTop(song, index)
-												"
-												content="Move to top of Playlist"
-												v-tippy
-												>vertical_align_top</i
-											>
-											<i
-												v-if="
-													isEditable() &&
-														playlistSongs.length -
-															1 !==
+												<confirm
+													v-if="
+														userId ===
+															playlist.createdBy ||
+															isEditable()
+													"
+													placement="left"
+													@confirm="
+														removeSongFromPlaylist(
+															element.youtubeId
+														)
+													"
+												>
+													<i
+														class="material-icons delete-icon"
+														content="Remove Song from Playlist"
+														v-tippy
+														>delete_forever</i
+													>
+												</confirm>
+												<i
+													class="material-icons"
+													v-if="
+														isEditable() &&
+															index > 0
+													"
+													@click="
+														moveSongToTop(
+															element,
 															index
-												"
-												@click="
-													moveSongToBottom(
-														song,
-														index
-													)
-												"
-												class="material-icons"
-												content="Move to bottom of Playlist"
-												v-tippy
-												>vertical_align_bottom</i
-											>
-										</div>
-									</song-item>
-								</li>
-							</transition-group>
-						</draggable>
-						<p v-else class="nothing-here-text">
-							This playlist doesn't have any songs.
-						</p>
-					</aside>
+														)
+													"
+													content="Move to top of Playlist"
+													v-tippy
+													>vertical_align_top</i
+												>
+												<i
+													v-if="
+														isEditable() &&
+															playlistSongs.length -
+																1 !==
+																index
+													"
+													@click="
+														moveSongToBottom(
+															element,
+															index
+														)
+													"
+													class="material-icons"
+													content="Move to bottom of Playlist"
+													v-tippy
+													>vertical_align_bottom</i
+												>
+											</template>
+										</song-item>
+									</div>
+								</template>
+							</draggable>
+							<p v-else class="nothing-here-text">
+								This playlist doesn't have any songs.
+							</p>
+						</aside>
+					</div>
 				</div>
 			</div>
-
-			<!--
-			
-			
-			<button
-				class="button is-info"
-				@click="shuffle()"
-				v-if="playlist.isUserModifiable"
-			>
-				Shuffle
-			</button>
-			<h5>Edit playlist details:</h5>
-			 -->
-		</div>
-		<div slot="footer">
+		</template>
+		<template #footer>
 			<a
 				class="button is-default"
 				v-if="
-					this.userId === this.playlist.createdBy ||
+					userId === playlist.createdBy ||
 						isEditable() ||
-						this.playlist.privacy === 'public'
+						playlist.privacy === 'public'
 				"
 				@click="downloadPlaylist()"
 				href="#"
@@ -226,7 +230,7 @@
 					<a class="button is-danger"> Remove Playlist </a>
 				</confirm>
 			</div>
-		</div>
+		</template>
 	</modal>
 </template>
 
@@ -240,12 +244,21 @@ import Modal from "../../Modal.vue";
 import SongItem from "../../SongItem.vue";
 
 import Settings from "./Tabs/Settings.vue";
-import Youtube from "./Tabs/Youtube.vue";
+import AddSongs from "./Tabs/AddSongs.vue";
+import ImportPlaylists from "./Tabs/ImportPlaylists.vue";
 
 import utils from "../../../../js/utils";
 
 export default {
-	components: { Modal, draggable, Confirm, SongItem, Settings, Youtube },
+	components: {
+		Modal,
+		draggable,
+		Confirm,
+		SongItem,
+		Settings,
+		AddSongs,
+		ImportPlaylists
+	},
 	data() {
 		return {
 			utils,
@@ -694,6 +707,12 @@ export default {
 		height: 100%;
 		overflow-y: auto;
 		flex-grow: 1;
+
+		#rearrange-songs-section {
+			.scrollable-list:not(:last-of-type) {
+				margin-bottom: 10px;
+			}
+		}
 	}
 }
 

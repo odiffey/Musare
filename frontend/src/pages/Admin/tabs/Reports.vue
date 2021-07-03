@@ -5,87 +5,105 @@
 			<table class="table is-striped">
 				<thead>
 					<tr>
-						<td>Song ID</td>
-						<td>Author</td>
-						<td>Time of report</td>
-						<td>Description</td>
+						<td>Summary</td>
+						<td>YouTube / Song ID</td>
+						<td>Categories Included</td>
 						<td>Options</td>
 					</tr>
 				</thead>
 				<tbody>
 					<tr v-for="report in reports" :key="report._id">
 						<td>
+							<report-info-item
+								:created-at="report.createdAt"
+								:created-by="report.createdBy"
+							/>
+						</td>
+						<td>
 							<span>
-								{{ report.song.youtubeId }}
+								<a
+									:href="
+										'https://www.youtube.com/watch?v=' +
+											`${report.song.youtubeId}`
+									"
+									target="_blank"
+								>
+									{{ report.song.youtubeId }}</a
+								>
 								<br />
 								{{ report.song._id }}
 							</span>
 						</td>
-						<td>
-							<user-id-to-username
-								:user-id="report.createdBy"
-								:link="true"
-							/>
+
+						<td id="categories-column">
+							<ul>
+								<li
+									v-for="category in getCategories(
+										report.issues
+									)"
+									:key="category"
+								>
+									{{ category }}
+								</li>
+							</ul>
 						</td>
-						<td>
-							<span
-								:content="report.createdAt"
-								v-tippy="{ theme: 'info' }"
-								>{{
-									formatDistance(
-										new Date(report.createdAt),
-										new Date(),
-										{ addSuffix: true }
-									)
-								}}</span
-							>
-						</td>
-						<td>
-							<span>{{ report.description }}</span>
-						</td>
-						<td>
-							<a
-								class="button is-warning"
-								href="#"
-								@click="view(report)"
-								>View</a
-							>
+						<td id="options-column">
 							<a
 								class="button is-primary"
 								href="#"
-								@click="resolve(report._id)"
-								>Resolve</a
+								@click="view(report._id)"
+								content="Expand"
+								v-tippy
 							>
+								<i class="material-icons icon-with-button">
+									open_in_full
+								</i>
+								Expand
+							</a>
+							<a
+								class="button is-success "
+								href="#"
+								@click="resolve(report._id)"
+								content="Resolve"
+								v-tippy
+							>
+								<i class="material-icons icon-with-button">
+									done_all
+								</i>
+								Resolve
+							</a>
 						</td>
 					</tr>
 				</tbody>
 			</table>
 		</div>
 
-		<view-report
-			v-if="modals.viewReport"
-			:report-id="viewingReportId"
-			sector="admin"
-		/>
+		<view-report v-if="modals.viewReport" sector="admin" />
+
+		<edit-song v-if="modals.editSong" song-type="songs" />
 	</div>
 </template>
 
 <script>
+import ReportInfoItem from "@/components/ReportInfoItem.vue";
 import { mapState, mapActions, mapGetters } from "vuex";
-import { formatDistance } from "date-fns";
+import { defineAsyncComponent } from "vue";
 
 import Toast from "toasters";
-import UserIdToUsername from "@/components/UserIdToUsername.vue";
 import ws from "@/ws";
 
 export default {
 	components: {
-		ViewReport: () => import("@/components/modals/ViewReport.vue"),
-		UserIdToUsername
+		ViewReport: defineAsyncComponent(() =>
+			import("@/components/modals/ViewReport.vue")
+		),
+		EditSong: defineAsyncComponent(() =>
+			import("@/components/modals/EditSong/index.vue")
+		),
+		ReportInfoItem
 	},
 	data() {
 		return {
-			viewingReportId: "",
 			reports: []
 		};
 	},
@@ -112,28 +130,36 @@ export default {
 		});
 
 		this.socket.on("event:admin.report.created", res =>
-			this.reports.push(res.data.report)
+			this.reports.unshift(res.data.report)
 		);
 
-		if (this.$route.query.id) {
-			this.socket.dispatch(
-				"reports.findOne",
-				this.$route.query.id,
-				res => {
-					if (res.status === "success") this.view(res.data.report);
-					else new Toast("Report with that ID not found");
-				}
-			);
-		}
+		// if (this.$route.query.id) {
+		// 	this.socket.dispatch(
+		// 		"reports.findOne",
+		// 		this.$route.query.id,
+		// 		res => {
+		// 			if (res.status === "success") this.view(res.data.report);
+		// 			else new Toast("Report with that ID not found");
+		// 		}
+		// 	);
+		// }
 	},
 	methods: {
-		formatDistance,
 		init() {
 			this.socket.dispatch("apis.joinAdminRoom", "reports", () => {});
 		},
-		view(report) {
-			// this.viewReport(report);
-			this.viewingReportId = report._id;
+		getCategories(issues) {
+			const categories = [];
+
+			issues.forEach(issue => {
+				if (categories.indexOf(issue.category) === -1)
+					categories.push(issue.category);
+			});
+
+			return categories;
+		},
+		view(reportId) {
+			this.viewReport(reportId);
 			this.openModal("viewReport");
 		},
 		resolve(reportId) {
@@ -145,7 +171,8 @@ export default {
 				.catch(err => new Toast(err.message));
 		},
 		...mapActions("modalVisibility", ["openModal", "closeModal"]),
-		...mapActions("admin/reports", ["resolveReport"])
+		...mapActions("admin/reports", ["resolveReport"]),
+		...mapActions("modals/viewReport", ["viewReport"])
 	}
 };
 </script>
@@ -177,13 +204,23 @@ export default {
 	}
 }
 
-.tag:not(:last-child) {
-	margin-right: 5px;
+#options-column {
+	a:not(:last-of-type) {
+		margin-right: 5px;
+	}
+}
+
+#categories-column {
+	text-transform: capitalize;
 }
 
 td {
 	word-wrap: break-word;
 	max-width: 10vw;
 	vertical-align: middle;
+}
+
+li {
+	list-style: inside;
 }
 </style>
