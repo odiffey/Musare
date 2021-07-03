@@ -604,6 +604,7 @@ export default {
 		flex-grow: 1;
 
 		.tabs-container {
+			padding: 15px 0 !important;
 			.tab-selection {
 				display: flex;
 				overflow-x: auto;
@@ -673,7 +674,7 @@ export default {
 	.manage-station-modal.modal .modal-card-body .custom-modal-body {
 		.left-section,
 		.right-section {
-			flex-basis: unset;
+			flex-basis: 100%;
 			height: auto;
 		}
 	}

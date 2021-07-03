@@ -1,13 +1,5 @@
 <template>
 	<div class="youtube-tab section">
-		<h4 class="section-title">Import from YouTube</h4>
-
-		<p class="section-description">
-			Import a playlist or song by searching or using a link from YouTube.
-		</p>
-
-		<hr class="section-horizontal-rule" />
-
 		<label class="label">
 			Search for a playlist from YouTube
 		</label>
