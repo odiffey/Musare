@@ -583,7 +583,13 @@ export default {
 
 <style lang="scss" scoped>
 .night-mode {
-	.manage-station-modal.modal .modal-card-body .custom-modal-body .left-section .tabs-container .tab-selection .button {
+	.manage-station-modal.modal
+		.modal-card-body
+		.custom-modal-body
+		.left-section
+		.tabs-container
+		.tab-selection
+		.button {
 		background: var(--dark-grey);
 		color: var(--white);
 	}
