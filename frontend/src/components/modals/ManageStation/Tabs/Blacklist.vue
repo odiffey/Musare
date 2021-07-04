@@ -123,6 +123,13 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+.night-mode {
+	.tabs-container .tab-selection .button {
+		background: var(--dark-grey) !important;
+		color: var(--white) !important;
+	}
+}
+
 .station-blacklist {
 	.tabs-container {
 		margin-top: 10px;

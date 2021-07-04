@@ -590,6 +590,13 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+.night-mode {
+	.tabs-container .tab-selection .button {
+		background: var(--dark-grey) !important;
+		color: var(--white) !important;
+	}
+}
+
 .station-playlists {
 	.tabs-container {
 		.tab-selection {

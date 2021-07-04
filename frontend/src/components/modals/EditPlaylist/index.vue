@@ -580,9 +580,26 @@ export default {
 		color: var(--light-grey-2);
 	}
 
-	.tabs-container .tab-selection .button {
-		background: var(--dark-grey) !important;
-		color: var(--white) !important;
+	.edit-playlist-modal.modal .modal-card-body .custom-modal-body {
+		.section {
+			background-color: transparent !important;
+		}
+		.left-section {
+			#playlist-info-section {
+				background-color: var(--dark-grey-3) !important;
+				border: 0;
+			}
+			.tabs-container {
+				.tab-selection .button {
+					background: var(--dark-grey);
+					color: var(--white);
+				}
+				.tab {
+					background-color: var(--dark-grey-3) !important;
+					border: 0;
+				}
+			}
+		}
 	}
 }
 
