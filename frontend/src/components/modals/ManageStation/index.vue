@@ -582,6 +582,13 @@ export default {
 </style>
 
 <style lang="scss" scoped>
+.night-mode {
+	.manage-station-modal.modal .modal-card-body .custom-modal-body .left-section .tabs-container .tab-selection .button {
+		background: var(--dark-grey);
+		color: var(--white);
+	}
+}
+
 .manage-station-modal.modal .modal-card-body .custom-modal-body {
 	display: flex;
 	flex-wrap: wrap;
