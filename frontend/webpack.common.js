@@ -4,6 +4,7 @@ const config = require("config");
 const path = require("path");
 const { VueLoaderPlugin } = require("vue-loader");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
+const ESLintPlugin = require('eslint-webpack-plugin');
 
 module.exports = {
 	entry: "./src/main.js",
@@ -25,25 +26,14 @@ module.exports = {
 			template: "dist/index.tpl.html",
 			inject: "body",
 			filename: "index.html"
-		})
+		}),
+		new ESLintPlugin()
 	],
 	module: {
 		rules: [
 			{
-				enforce: "pre",
-				test: /\.vue$/,
-				loader: "eslint-loader",
-				exclude: /node_modules/
-			},
-			{
 				test: /\.vue$/,
 				loader: "vue-loader",
-				exclude: /node_modules/
-			},
-			{
-				enforce: "pre",
-				test: /\.js$/,
-				loader: "eslint-loader",
 				exclude: /node_modules/
 			},
 			{

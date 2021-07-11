@@ -51,7 +51,7 @@
 					v-bind="dragOptions"
 					@change="changeFavoriteOrder"
 				>
-					<template #item="{element}">
+					<template #item="{ element }">
 						<router-link
 							:to="{
 								name: 'station',
@@ -102,7 +102,10 @@
 										<h5>{{ element.displayName }}</h5>
 										<i
 											v-if="element.type === 'official'"
-											class="material-icons verified-station"
+											class="
+												material-icons
+												verified-station
+											"
 											content="Verified Station"
 											v-tippy="{
 												theme: 'info'
@@ -138,7 +141,7 @@
 										<i
 											v-if="
 												element.type === 'community' &&
-													isOwner(element)
+												isOwner(element)
 											"
 											class="homeIcon material-icons"
 											content="This is your station."
@@ -168,7 +171,7 @@
 								<i
 									v-if="
 										element.paused &&
-											element.currentSong.title
+										element.currentSong.title
 									"
 									class="material-icons"
 									content="Station Paused"
@@ -354,7 +357,7 @@
 								<i
 									v-if="
 										station.type === 'community' &&
-											isOwner(station)
+										isOwner(station)
 									"
 									class="homeIcon material-icons"
 									content="This is your station."
@@ -679,9 +682,10 @@ export default {
 
 			if (station) {
 				station.isFavorited = false;
-				this.orderOfFavoriteStations = this.orderOfFavoriteStations.filter(
-					favoritedId => favoritedId !== stationId
-				);
+				this.orderOfFavoriteStations =
+					this.orderOfFavoriteStations.filter(
+						favoritedId => favoritedId !== stationId
+					);
 			}
 		});
 
@@ -763,9 +767,7 @@ export default {
 			this.socket.dispatch(
 				"users.updateOrderOfFavoriteStations",
 				recalculatedOrder,
-				res => {
-					return new Toast(res.message);
-				}
+				res => new Toast(res.message)
 			);
 		},
 		...mapActions("modalVisibility", ["openModal"]),

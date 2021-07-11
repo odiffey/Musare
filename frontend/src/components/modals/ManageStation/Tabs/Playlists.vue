@@ -160,7 +160,7 @@
 							<confirm
 								v-if="
 									isOwnerOrAdmin() &&
-										!isExcluded(playlist._id)
+									!isExcluded(playlist._id)
 								"
 								@confirm="blacklistPlaylist(playlist._id)"
 							>
@@ -182,8 +182,7 @@
 							<i
 								v-if="
 									playlist.createdBy !== myUserId &&
-										(playlist.privacy === 'public' ||
-											isAdmin())
+									(playlist.privacy === 'public' || isAdmin())
 								"
 								@click="showPlaylist(playlist._id)"
 								class="material-icons edit-icon"
@@ -230,7 +229,7 @@
 						@end="drag = false"
 						@change="savePlaylistOrder"
 					>
-						<template #item="{element}">
+						<template #item="{ element }">
 							<playlist-item
 								class="item-draggable"
 								:playlist="element"
@@ -284,7 +283,7 @@
 									<confirm
 										v-if="
 											isOwnerOrAdmin() &&
-												!isExcluded(element._id)
+											!isExcluded(element._id)
 										"
 										@confirm="
 											blacklistPlaylist(element._id)
@@ -553,9 +552,12 @@ export default {
 					if (queueSong.requestedBy === this.userId) isInQueue = true;
 				});
 				if (!isInQueue && this.partyPlaylists) {
-					const selectedPlaylist = this.partyPlaylists[
-						Math.floor(Math.random() * this.partyPlaylists.length)
-					];
+					const selectedPlaylist =
+						this.partyPlaylists[
+							Math.floor(
+								Math.random() * this.partyPlaylists.length
+							)
+						];
 					if (
 						selectedPlaylist._id &&
 						selectedPlaylist.songs.length > 0

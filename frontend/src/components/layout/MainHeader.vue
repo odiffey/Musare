@@ -34,7 +34,7 @@
 			</router-link>
 			<span v-if="loggedIn" class="grouped">
 				<router-link
-					class="nav-item "
+					class="nav-item"
 					:to="{
 						name: 'profile',
 						params: { username }

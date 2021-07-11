@@ -141,7 +141,7 @@
 							:song="currentSong"
 							:requested-by="
 								station.type === 'community' &&
-									station.partyMode === true
+								station.partyMode === true
 							"
 							header="Currently Playing.."
 							class="currently-playing"

@@ -26,7 +26,7 @@
 		<div
 			v-if="
 				userId === playlist.createdBy ||
-					(playlist.type === 'genre' && isAdmin())
+				(playlist.type === 'genre' && isAdmin())
 			"
 		>
 			<label class="label"> Change privacy </label>
