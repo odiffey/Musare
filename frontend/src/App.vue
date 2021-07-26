@@ -655,7 +655,7 @@ a {
 			border: 0;
 			padding: 10px;
 			font-size: 15.5px;
-			height: 36px;
+			min-height: 36px;
 			background: var(--light-grey);
 			border-radius: 5px;
 			cursor: pointer;
@@ -664,6 +664,7 @@ a {
 				display: flex;
 				flex-direction: row;
 				align-items: center;
+				overflow-wrap: anywhere;
 
 				p {
 					margin-left: 10px;
