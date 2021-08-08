@@ -948,16 +948,17 @@ export default {
 						? `${newSong.title} by ${newSong.artists.join(", ")}`
 						: newSong.title;
 
-					ActivitiesModule.runJob("ADD_ACTIVITY", {
-						userId: session.userId,
-						type: "playlist__add_song",
-						payload: {
-							message: `Added <youtubeId>${songName}</youtubeId> to playlist <playlistId>${playlist.displayName}</playlistId>`,
-							thumbnail: newSong.thumbnail,
-							playlistId,
-							youtubeId
-						}
-					});
+					if (playlist.privacy === "public")
+						ActivitiesModule.runJob("ADD_ACTIVITY", {
+							userId: session.userId,
+							type: "playlist__add_song",
+							payload: {
+								message: `Added <youtubeId>${songName}</youtubeId> to playlist <playlistId>${playlist.displayName}</playlistId>`,
+								thumbnail: newSong.thumbnail,
+								playlistId,
+								youtubeId
+							}
+						});
 				}
 
 				StationsModule.runJob("GET_STATIONS_THAT_INCLUDE_OR_EXCLUDE_PLAYLIST", { playlistId })
@@ -1084,14 +1085,15 @@ export default {
 					return cb({ status: "error", message: err });
 				}
 
-				ActivitiesModule.runJob("ADD_ACTIVITY", {
-					userId: session.userId,
-					type: "playlist__import_playlist",
-					payload: {
-						message: `Imported ${addSongsStats.successful} songs to playlist <playlistId>${playlist.displayName}</playlistId>`,
-						playlistId
-					}
-				});
+				if (playlist.privacy === "public")
+					ActivitiesModule.runJob("ADD_ACTIVITY", {
+						userId: session.userId,
+						type: "playlist__import_playlist",
+						payload: {
+							message: `Imported ${addSongsStats.successful} songs to playlist <playlistId>${playlist.displayName}</playlistId>`,
+							playlistId
+						}
+					});
 
 				this.log(
 					"SUCCESS",
@@ -1172,7 +1174,11 @@ export default {
 						? `${youtubeSong.title} by ${youtubeSong.artists.join(", ")}`
 						: youtubeSong.title;
 
-					if (playlist.displayName !== "Liked Songs" && playlist.displayName !== "Disliked Songs") {
+					if (
+						playlist.displayName !== "Liked Songs" &&
+						playlist.displayName !== "Disliked Songs" &&
+						playlist.privacy === "public"
+					) {
 						ActivitiesModule.runJob("ADD_ACTIVITY", {
 							userId: session.userId,
 							type: "playlist__remove_song",
@@ -1455,9 +1461,13 @@ export default {
 				},
 
 				(res, next) => {
-					PlaylistsModule.runJob("UPDATE_PLAYLIST", { playlistId }, this)
-						.then(playlist => next(null, playlist))
-						.catch(next);
+					if (res.n === 0) next("No user playlist found with that id and owned by you.");
+					else if (res.nModified === 0) next(`Nothing changed, the playlist was already ${privacy}.`);
+					else {
+						PlaylistsModule.runJob("UPDATE_PLAYLIST", { playlistId }, this)
+							.then(playlist => next(null, playlist))
+							.catch(next);
+					}
 				}
 			],
 			async (err, playlist) => {
@@ -1495,6 +1505,70 @@ export default {
 						playlistId
 					}
 				});
+
+				return cb({
+					status: "success",
+					message: "Playlist has been successfully updated"
+				});
+			}
+		);
+	}),
+
+	/**
+	 * Updates the privacy of a playlist
+	 *
+	 * @param {object} session - the session object automatically added by the websocket
+	 * @param {string} playlistId - the id of the playlist we are updating the privacy for
+	 * @param {string} privacy - what the new privacy of the playlist should be e.g. public
+	 * @param {Function} cb - gets called with the result
+	 */
+	updatePrivacyAdmin: isAdminRequired(async function updatePrivacyAdmin(session, playlistId, privacy, cb) {
+		const playlistModel = await DBModule.runJob("GET_MODEL", { modelName: "playlist" }, this);
+
+		async.waterfall(
+			[
+				next => {
+					playlistModel.updateOne({ _id: playlistId }, { $set: { privacy } }, { runValidators: true }, next);
+				},
+
+				(res, next) => {
+					if (res.n === 0) next("No playlist found with that id.");
+					else if (res.nModified === 0) next(`Nothing changed, the playlist was already ${privacy}.`);
+					else {
+						PlaylistsModule.runJob("UPDATE_PLAYLIST", { playlistId }, this)
+							.then(playlist => next(null, playlist))
+							.catch(next);
+					}
+				}
+			],
+			async (err, playlist) => {
+				if (err) {
+					err = await UtilsModule.runJob("GET_ERROR", { error: err }, this);
+
+					this.log(
+						"ERROR",
+						"PLAYLIST_UPDATE_PRIVACY_ADMIN",
+						`Updating privacy to "${privacy}" for playlist "${playlistId}" failed for user "${session.userId}". "${err}"`
+					);
+
+					return cb({ status: "error", message: err });
+				}
+
+				this.log(
+					"SUCCESS",
+					"PLAYLIST_UPDATE_PRIVACY_ADMIn",
+					`Successfully updated privacy to "${privacy}" for playlist "${playlistId}" for user "${session.userId}".`
+				);
+
+				if (playlist.type === "user") {
+					CacheModule.runJob("PUB", {
+						channel: "playlist.updatePrivacy",
+						value: {
+							userId: playlist.createdBy,
+							playlist
+						}
+					});
+				}
 
 				return cb({
 					status: "success",

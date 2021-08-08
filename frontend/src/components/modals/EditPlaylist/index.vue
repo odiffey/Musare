@@ -112,6 +112,7 @@
 											:class="{
 												'item-draggable': isEditable()
 											}"
+											:ref="`song-item-${index}`"
 										>
 											<template #actions>
 												<i
@@ -194,6 +195,12 @@
 									</div>
 								</template>
 							</draggable>
+							<p
+								v-else-if="gettingSongs"
+								class="nothing-here-text"
+							>
+								Loading songs...
+							</p>
 							<p v-else class="nothing-here-text">
 								This playlist doesn't have any songs.
 							</p>
@@ -269,7 +276,8 @@ export default {
 		return {
 			utils,
 			drag: false,
-			apiDomain: ""
+			apiDomain: "",
+			gettingSongs: false
 		};
 	},
 	computed: {
@@ -311,12 +319,14 @@ export default {
 		})
 	},
 	mounted() {
+		this.gettingSongs = true;
 		this.socket.dispatch("playlists.getPlaylist", this.editing, res => {
 			if (res.status === "success") {
 				// this.playlist = res.data.playlist;
 				// this.playlist.songs.sort((a, b) => a.position - b.position);
 				this.setPlaylist(res.data.playlist);
 			} else new Toast(res.message);
+			this.gettingSongs = false;
 		});
 
 		this.socket.on(
@@ -376,6 +386,9 @@ export default {
 			{ modal: "editPlaylist" }
 		);
 	},
+	beforeUnmount() {
+		this.clearPlaylist();
+	},
 	methods: {
 		isEditable() {
 			return (
@@ -409,6 +422,8 @@ export default {
 			);
 		},
 		moveSongToTop(song, index) {
+			this.$refs[`song-item-${index}`].$refs.songActions.tippy.hide();
+
 			this.repositionSong({
 				moved: {
 					element: song,
@@ -418,6 +433,8 @@ export default {
 			});
 		},
 		moveSongToBottom(song, index) {
+			this.$refs[`song-item-${index}`].$refs.songActions.tippy.hide();
+
 			this.repositionSong({
 				moved: {
 					element: song,
@@ -557,6 +574,7 @@ export default {
 		}),
 		...mapActions("modals/editPlaylist", [
 			"setPlaylist",
+			"clearPlaylist",
 			"addSong",
 			"removeSong",
 			"repositionedSong"

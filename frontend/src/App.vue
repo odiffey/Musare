@@ -448,6 +448,13 @@ a {
 			color: var(--black);
 		}
 
+		&[data-theme~="songActions"],
+		&[data-theme~="addToPlaylist"],
+		&[data-theme~="stationSettings"] {
+			background-color: var(--dark-grey-2);
+			border: 0 !important;
+		}
+
 		&[data-theme~="songActions"] {
 			background-color: var(--dark-grey-2);
 			border: 0 !important;
@@ -461,6 +468,7 @@ a {
 				background-color: var(--white);
 			}
 		}
+
 		&[data-theme~="addToPlaylist"] {
 			background-color: var(--dark-grey-2);
 			border: 0 !important;
@@ -492,7 +500,8 @@ a {
 
 	.tippy-box[data-placement^="bottom"] {
 		&[data-theme~="songActions"],
-		&[data-theme~="addToPlaylist"] {
+		&[data-theme~="addToPlaylist"],
+		&[data-theme~="stationSettings"] {
 			> .tippy-arrow::before {
 				border-bottom-color: var(--dark-grey-2);
 			}
@@ -612,7 +621,8 @@ a {
 
 .tippy-box[data-placement^="bottom"] {
 	&[data-theme~="songActions"],
-	&[data-theme~="addToPlaylist"] {
+	&[data-theme~="addToPlaylist"],
+	&[data-theme~="stationSettings"] {
 		> .tippy-arrow::before {
 			border-bottom-color: var(--white);
 		}
@@ -646,6 +656,16 @@ a {
 	}
 }
 
+.tippy-box[data-theme~="stationSettings"] {
+	border: 1px solid var(--light-grey-3);
+	box-shadow: 0 14px 28px rgba(0, 0, 0, 0.25), 0 10px 10px rgba(0, 0, 0, 0.22);
+	background-color: var(--white);
+
+	button:not(:last-of-type) {
+		margin-bottom: 5px;
+	}
+}
+
 .tippy-box[data-theme~="addToPlaylist"] {
 	font-size: 15px;
 	padding: 5px;
@@ -653,7 +673,7 @@ a {
 	box-shadow: 0 14px 28px rgba(0, 0, 0, 0.25), 0 10px 10px rgba(0, 0, 0, 0.22);
 	background-color: var(--white);
 	color: var(--dark-grey);
-	width: max-content;
+	width: 100%;
 
 	.nav-dropdown-items {
 		.nav-item {
@@ -692,6 +712,7 @@ a {
 				}
 
 				.slider {
+					width: 100%;
 					position: absolute;
 					cursor: pointer;
 					top: 0;
@@ -978,11 +999,6 @@ h4.section-title {
 		span {
 			cursor: pointer;
 			// color: var(--dark-grey);
-
-			&:hover,
-			&:focus {
-				filter: brightness(90%);
-			}
 
 			&:not(:first-child) {
 				margin-left: 5px;

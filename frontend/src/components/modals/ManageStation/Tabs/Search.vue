@@ -53,7 +53,7 @@
 						class="input"
 						type="text"
 						placeholder="Enter your YouTube query here..."
-						v-model="search.songs.query"
+						v-model="youtubeSearch.songs.query"
 						autofocus
 						@keyup.enter="searchForSongs()"
 					/>
@@ -66,9 +66,12 @@
 				</p>
 			</div>
 
-			<div v-if="search.songs.results.length > 0" id="song-query-results">
+			<div
+				v-if="youtubeSearch.songs.results.length > 0"
+				id="song-query-results"
+			>
 				<search-query-item
-					v-for="(result, index) in search.songs.results"
+					v-for="(result, index) in youtubeSearch.songs.results"
 					:key="result.id"
 					:result="result"
 				>
@@ -117,6 +120,7 @@ import { mapState, mapGetters } from "vuex";
 
 import Toast from "toasters";
 import SearchYoutube from "@/mixins/SearchYoutube.vue";
+import SearchMusare from "@/mixins/SearchMusare.vue";
 
 import SongItem from "@/components/SongItem.vue";
 import SearchQueryItem from "../../../SearchQueryItem.vue";
@@ -126,26 +130,8 @@ export default {
 		SongItem,
 		SearchQueryItem
 	},
-	mixins: [SearchYoutube],
-	data() {
-		return {
-			musareSearch: {
-				query: "",
-				searchedQuery: "",
-				page: 0,
-				count: 0,
-				resultsLeft: 0,
-				results: []
-			}
-		};
-	},
+	mixins: [SearchYoutube, SearchMusare],
 	computed: {
-		resultsLeftCount() {
-			return this.musareSearch.count - this.musareSearch.results.length;
-		},
-		nextPageResultsCount() {
-			return Math.min(this.musareSearch.pageSize, this.resultsLeftCount);
-		},
 		...mapState("modals/manageStation", {
 			station: state => state.station,
 			originalStation: state => state.originalStation
@@ -166,7 +152,7 @@ export default {
 							new Toast(`Error: ${res.message}`);
 						else {
 							if (index)
-								this.search.songs.results[
+								this.youtubeSearch.songs.results[
 									index
 								].isAddedToQueue = true;
 
@@ -179,53 +165,14 @@ export default {
 					if (res.status !== "success")
 						new Toast(`Error: ${res.message}`);
 					else {
-						this.search.songs.results[index].isAddedToQueue = true;
+						this.youtubeSearch.songs.results[
+							index
+						].isAddedToQueue = true;
 
 						new Toast(res.message);
 					}
 				});
 			}
-		},
-		searchForMusareSongs(page) {
-			if (
-				this.musareSearch.page >= page ||
-				this.musareSearch.searchedQuery !== this.musareSearch.query
-			) {
-				this.musareSearch.results = [];
-				this.musareSearch.page = 0;
-				this.musareSearch.count = 0;
-				this.musareSearch.resultsLeft = 0;
-				this.musareSearch.pageSize = 0;
-			}
-
-			this.musareSearch.searchedQuery = this.musareSearch.query;
-			this.socket.dispatch(
-				"songs.searchOfficial",
-				this.musareSearch.query,
-				page,
-				res => {
-					const { data } = res;
-					const { count, pageSize, songs } = data;
-					if (res.status === "success") {
-						this.musareSearch.results = [
-							...this.musareSearch.results,
-							...songs
-						];
-						this.musareSearch.page = page;
-						this.musareSearch.count = count;
-						this.musareSearch.resultsLeft =
-							count - this.musareSearch.results.length;
-						this.musareSearch.pageSize = pageSize;
-					} else if (res.status === "error") {
-						this.musareSearch.results = [];
-						this.musareSearch.page = 0;
-						this.musareSearch.count = 0;
-						this.musareSearch.resultsLeft = 0;
-						this.musareSearch.pageSize = 0;
-						new Toast(res.message);
-					}
-				}
-			);
 		}
 	}
 };

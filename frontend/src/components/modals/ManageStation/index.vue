@@ -26,12 +26,11 @@
 							<button
 								v-if="
 									isOwnerOrAdmin() ||
-										(loggedIn &&
-											station.type === 'community' &&
-											station.partyMode &&
-											((station.locked &&
-												isOwnerOrAdmin()) ||
-												!station.locked))
+									(loggedIn &&
+										station.type === 'community' &&
+										station.partyMode &&
+										((station.locked && isOwnerOrAdmin()) ||
+											!station.locked))
 								"
 								class="button is-default"
 								:class="{ selected: tab === 'playlists' }"
@@ -43,10 +42,10 @@
 							<button
 								v-if="
 									loggedIn &&
-										station.type === 'community' &&
-										station.partyMode &&
-										((station.locked && isOwnerOrAdmin()) ||
-											!station.locked)
+									station.type === 'community' &&
+									station.partyMode &&
+									((station.locked && isOwnerOrAdmin()) ||
+										!station.locked)
 								"
 								class="button is-default"
 								:class="{ selected: tab === 'search' }"
@@ -73,11 +72,11 @@
 						<playlists
 							v-if="
 								isOwnerOrAdmin() ||
-									(loggedIn &&
-										station.type === 'community' &&
-										station.partyMode &&
-										((station.locked && isOwnerOrAdmin()) ||
-											!station.locked))
+								(loggedIn &&
+									station.type === 'community' &&
+									station.partyMode &&
+									((station.locked && isOwnerOrAdmin()) ||
+										!station.locked))
 							"
 							class="tab"
 							v-show="tab === 'playlists'"
@@ -85,10 +84,10 @@
 						<search
 							v-if="
 								loggedIn &&
-									station.type === 'community' &&
-									station.partyMode &&
-									((station.locked && isOwnerOrAdmin()) ||
-										!station.locked)
+								station.type === 'community' &&
+								station.partyMode &&
+								((station.locked && isOwnerOrAdmin()) ||
+									!station.locked)
 							"
 							class="tab"
 							v-show="tab === 'search'"

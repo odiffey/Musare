@@ -71,8 +71,7 @@
 							<i
 								v-if="
 									playlist.createdBy !== myUserId &&
-										(playlist.privacy === 'public' ||
-											isAdmin())
+									(playlist.privacy === 'public' || isAdmin())
 								"
 								@click="showPlaylist(playlist._id)"
 								class="material-icons edit-icon"
@@ -127,7 +126,7 @@
 									(isOwnerOrAdmin() ||
 										(station.type === 'community' &&
 											station.partyMode)) &&
-										isSelected(playlist._id)
+									isSelected(playlist._id)
 								"
 								@confirm="deselectPlaylist(playlist._id)"
 							>
@@ -144,8 +143,8 @@
 									(isOwnerOrAdmin() ||
 										(station.type === 'community' &&
 											station.partyMode)) &&
-										!isSelected(playlist._id) &&
-										!isExcluded(playlist._id)
+									!isSelected(playlist._id) &&
+									!isExcluded(playlist._id)
 								"
 								@click="selectPlaylist(playlist)"
 								class="material-icons play-icon"
@@ -245,10 +244,10 @@
 									<i
 										v-if="
 											station.type === 'community' &&
-												(isOwnerOrAdmin() ||
-													station.partyMode) &&
-												!isSelected(element._id) &&
-												!isExcluded(element._id)
+											(isOwnerOrAdmin() ||
+												station.partyMode) &&
+											!isSelected(element._id) &&
+											!isExcluded(element._id)
 										"
 										@click="selectPlaylist(element)"
 										class="material-icons play-icon"
@@ -263,9 +262,9 @@
 									<confirm
 										v-if="
 											station.type === 'community' &&
-												(isOwnerOrAdmin() ||
-													station.partyMode) &&
-												isSelected(element._id)
+											(isOwnerOrAdmin() ||
+												station.partyMode) &&
+											isSelected(element._id)
 										"
 										@confirm="deselectPlaylist(element._id)"
 									>
