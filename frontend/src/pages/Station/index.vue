@@ -114,39 +114,6 @@
 							</div>
 
 							<div id="admin-buttons" v-if="isOwnerOrAdmin()">
-								<!-- (Admin) Pause/Resume Button -->
-								<button
-									class="button is-danger"
-									v-if="stationPaused"
-									@click="resumeStation()"
-								>
-									<i class="material-icons icon-with-button"
-										>play_arrow</i
-									>
-									<span> Resume Station </span>
-								</button>
-								<button
-									class="button is-danger"
-									@click="pauseStation()"
-									v-else
-								>
-									<i class="material-icons icon-with-button"
-										>pause</i
-									>
-									<span> Pause Station </span>
-								</button>
-
-								<!-- (Admin) Skip Button -->
-								<button
-									class="button is-danger"
-									@click="skipStation()"
-								>
-									<i class="material-icons icon-with-button"
-										>skip_next</i
-									>
-									<span> Force Skip </span>
-								</button>
-
 								<!-- (Admin) Station Settings Button -->
 								<button
 									class="button is-primary"
@@ -315,6 +282,35 @@
 									>
 										<i class="material-icons">pause</i>
 									</button>
+									<!-- (Admin) Pause/Resume Button -->
+									<confirm
+										v-if="isOwnerOrAdmin() && stationPaused"
+										@confirm="resumeStation()"
+									>
+										<button
+											class="button is-danger"
+											content="Resume Station"
+											v-tippy
+										>
+											<i class="material-icons"
+												>play_arrow</i
+											>
+										</button>
+									</confirm>
+									<confirm
+										v-if="
+											isOwnerOrAdmin() && !stationPaused
+										"
+										@confirm="pauseStation()"
+									>
+										<button
+											class="button is-danger"
+											content="Pause Station"
+											v-tippy
+										>
+											<i class="material-icons">pause</i>
+										</button>
+									</confirm>
 
 									<!-- Vote to Skip Button -->
 									<button
@@ -323,13 +319,7 @@
 										content="Skip votes have not been loaded yet"
 										v-tippy
 									>
-										<i
-											class="
-												material-icons
-												icon-with-button
-											"
-											>skip_next</i
-										>
+										<i class="material-icons">skip_next</i>
 									</button>
 									<button
 										v-else-if="loggedIn"
@@ -338,13 +328,7 @@
 										content="Vote to Skip Song"
 										v-tippy
 									>
-										<i
-											class="
-												material-icons
-												icon-with-button
-											"
-											>skip_next</i
-										>
+										<i class="material-icons">skip_next</i>
 										{{ currentSong.skipVotes }}
 									</button>
 									<button
@@ -353,15 +337,25 @@
 										content="Log in to vote to skip songs"
 										v-tippy="{ theme: 'info' }"
 									>
-										<i
-											class="
-												material-icons
-												icon-with-button
-											"
-											>skip_next</i
-										>
+										<i class="material-icons">skip_next</i>
 										{{ currentSong.skipVotes }}
 									</button>
+
+									<!-- (Admin) Skip Button -->
+									<confirm
+										v-if="isOwnerOrAdmin()"
+										@confirm="skipStation()"
+									>
+										<button
+											class="button is-danger"
+											content="Force Skip Station"
+											v-tippy
+										>
+											<i class="material-icons"
+												>skip_next</i
+											>
+										</button>
+									</confirm>
 								</div>
 								<div id="duration">
 									<p>
@@ -786,6 +780,7 @@ import keyboardShortcuts from "@/keyboardShortcuts";
 import MainHeader from "@/components/layout/MainHeader.vue";
 import MainFooter from "@/components/layout/MainFooter.vue";
 
+import Confirm from "@/components/Confirm.vue";
 import FloatingBox from "@/components/FloatingBox.vue";
 import AddToPlaylistDropdown from "@/components/AddToPlaylistDropdown.vue";
 import SongItem from "@/components/SongItem.vue";
@@ -816,6 +811,7 @@ export default {
 			import("@/components/modals/Report.vue")
 		),
 		Z404,
+		Confirm,
 		FloatingBox,
 		StationSidebar,
 		AddToPlaylistDropdown,
@@ -2524,7 +2520,7 @@ export default {
 				flex-flow: wrap;
 
 				.button:not(#dropdown-toggle) {
-					width: 75px;
+					padding: 0 15px;
 				}
 
 				#left-buttons,
@@ -2535,8 +2531,11 @@ export default {
 				#left-buttons {
 					display: flex;
 
-					.button:not(:first-of-type) {
+					.button {
 						margin-left: 5px;
+					}
+					& > .button:first-of-type {
+						margin-left: 0;
 					}
 
 					.disabled {

@@ -583,18 +583,22 @@ export default {
 <style lang="scss" scoped>
 .night-mode {
 	.manage-station-modal.modal .modal-card-body .custom-modal-body {
-		.section {
-			background-color: transparent !important;
+		.left-section {
+			.tabs-container.section {
+				background-color: transparent !important;
+				.tab-selection .button {
+					background: var(--dark-grey);
+					color: var(--white);
+				}
+				.tab {
+					background-color: var(--dark-grey-3);
+					border: 0;
+				}
+			}
 		}
-		.left-section .tabs-container {
-			.tab-selection .button {
-				background: var(--dark-grey);
-				color: var(--white);
-			}
-			.tab {
-				background-color: var(--dark-grey-3);
-				border: 0;
-			}
+		.right-section .section,
+		#queue {
+			background-color: transparent !important;
 		}
 	}
 }
