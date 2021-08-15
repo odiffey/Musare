@@ -242,10 +242,7 @@ class _DBModule extends CoreClass {
 					// Playlist
 					this.schemas.playlist
 						.path("displayName")
-						.validate(
-							displayName => isLength(displayName, 1, 32) && regex.ascii.test(displayName),
-							"Invalid display name."
-						);
+						.validate(displayName => isLength(displayName, 1, 96), "Invalid display name.");
 
 					this.schemas.playlist.path("createdBy").validate(createdBy => {
 						this.models.playlist.countDocuments({ createdBy }, (err, c) => !(err || c >= 10));

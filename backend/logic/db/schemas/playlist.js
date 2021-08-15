@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 
 export default {
-	displayName: { type: String, min: 2, max: 32, required: true },
+	displayName: { type: String, min: 2, max: 96, required: true },
 	isUserModifiable: { type: Boolean, default: true, required: true },
 	songs: [
 		{
