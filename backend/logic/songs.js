@@ -499,6 +499,20 @@ class _SongsModule extends CoreClass {
 								next(err, song);
 							}
 						);
+						async.eachLimit(
+							song.artists,
+							1,
+							(artist, next) => {
+								PlaylistsModule.runJob("AUTOFILL_ARTIST_PLAYLIST", { artist }, this)
+									.then(() => {
+										next();
+									})
+									.catch(err => next(err));
+							},
+							err => {
+								next(err, song);
+							}
+						);
 					}
 				],
 				(err, song) => {
@@ -817,6 +831,41 @@ class _SongsModule extends CoreClass {
 	}
 
 	/**
+	 * Gets an array of all artists
+	 *
+	 * @returns {Promise} - returns a promise (resolve, reject)
+	 */
+	GET_ALL_ARTISTS() {
+		return new Promise((resolve, reject) =>
+			async.waterfall(
+				[
+					next => {
+						SongsModule.SongModel.find({ status: "verified" }, { artists: 1, _id: false }, next);
+					},
+
+					(songs, next) => {
+						let allArtists = [];
+						songs.forEach(song => {
+							allArtists = allArtists.concat(song.artists);
+						});
+
+						const lowerCaseArtists = allArtists.map(artist => artist.toLowerCase());
+						const uniqueArtists = lowerCaseArtists.filter(
+							(value, index, self) => self.indexOf(value) === index
+						);
+
+						next(null, uniqueArtists);
+					}
+				],
+				(err, artists) => {
+					if (err && err !== true) return reject(new Error(err));
+					return resolve({ artists });
+				}
+			)
+		);
+	}
+
+	/**
 	 * Gets an array of all songs with a specific genre
 	 *
 	 * @param {object} payload - returns an object containing the payload
@@ -832,6 +881,35 @@ class _SongsModule extends CoreClass {
 							{
 								status: "verified",
 								genres: { $regex: new RegExp(`^${payload.genre.toLowerCase()}$`, "i") }
+							},
+							next
+						);
+					}
+				],
+				(err, songs) => {
+					if (err && err !== true) return reject(new Error(err));
+					return resolve({ songs });
+				}
+			)
+		);
+	}
+
+	/**
+	 * Gets an array of all songs with a specific artist
+	 *
+	 * @param {object} payload - returns an object containing the payload
+	 * @param {string} payload.artist - the artist
+	 * @returns {Promise} - returns a promise (resolve, reject)
+	 */
+	GET_ALL_SONGS_WITH_ARTIST(payload) {
+		return new Promise((resolve, reject) =>
+			async.waterfall(
+				[
+					next => {
+						SongsModule.SongModel.find(
+							{
+								status: "verified",
+								artists: { $regex: new RegExp(`^${payload.artist.toLowerCase()}$`, "i") }
 							},
 							next
 						);

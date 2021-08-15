@@ -29,7 +29,9 @@
 								v-if="
 									userId === playlist.createdBy ||
 									isEditable() ||
-									(playlist.type === 'genre' && isAdmin())
+									((playlist.type === 'genre' ||
+										playlist.type === 'artist') &&
+										isAdmin())
 								"
 							>
 								Settings
@@ -61,7 +63,9 @@
 							v-if="
 								userId === playlist.createdBy ||
 								isEditable() ||
-								(playlist.type === 'genre' && isAdmin())
+								((playlist.type === 'genre' ||
+									playlist.type === 'artist') &&
+									isAdmin())
 							"
 						/>
 						<add-songs
@@ -237,6 +241,14 @@
 				>
 					<a class="button is-danger">
 						Clear and refill genre playlist
+					</a>
+				</confirm>
+				<confirm
+					v-if="playlist.type === 'artist'"
+					@confirm="clearAndRefillArtistPlaylist()"
+				>
+					<a class="button is-danger">
+						Clear and refill artist playlist
 					</a>
 				</confirm>
 				<confirm v-if="isEditable()" @confirm="removePlaylist()">
@@ -555,6 +567,20 @@ export default {
 		clearAndRefillGenrePlaylist() {
 			this.socket.dispatch(
 				"playlists.clearAndRefillGenrePlaylist",
+				this.playlist._id,
+				data => {
+					if (data.status !== "success")
+						new Toast({
+							content: `Error: ${data.message}`,
+							timeout: 8000
+						});
+					else new Toast({ content: data.message, timeout: 4000 });
+				}
+			);
+		},
+		clearAndRefillArtistPlaylist() {
+			this.socket.dispatch(
+				"playlists.clearAndRefillArtistPlaylist",
 				this.playlist._id,
 				data => {
 					if (data.status !== "success")

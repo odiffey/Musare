@@ -211,6 +211,42 @@ class _PlaylistsModule extends CoreClass {
 	}
 
 	/**
+	 * Creates a playlist that contains all songs of a specific artist
+	 *
+	 * @param {object} payload - object that contains the payload
+	 * @param {string} payload.artist - the artist
+	 * @returns {Promise} - returns promise (reject, resolve)
+	 */
+	CREATE_ARTIST_PLAYLIST(payload) {
+		return new Promise((resolve, reject) => {
+			PlaylistsModule.runJob("GET_ARTIST_PLAYLIST", { artist: payload.artist.toLowerCase() }, this)
+				.then(() => {
+					reject(new Error("Playlist already exists"));
+				})
+				.catch(err => {
+					if (err.message === "Playlist not found") {
+						PlaylistsModule.playlistModel.create(
+							{
+								isUserModifiable: false,
+								displayName: `Artist - ${payload.artist}`,
+								songs: [],
+								createdBy: "Musare",
+								createdFor: `${payload.artist.toLowerCase()}`,
+								createdAt: Date.now(),
+								type: "artist",
+								privacy: "public"
+							},
+							(err, playlist) => {
+								if (err) return reject(new Error(err));
+								return resolve(playlist._id);
+							}
+						);
+					} else reject(new Error(err));
+				});
+		});
+	}
+
+	/**
 	 * Gets all genre playlists
 	 *
 	 * @param {object} payload - object that contains the payload
@@ -221,6 +257,23 @@ class _PlaylistsModule extends CoreClass {
 		return new Promise((resolve, reject) => {
 			const includeObject = payload.includeSongs ? null : { songs: false };
 			PlaylistsModule.playlistModel.find({ type: "genre" }, includeObject, (err, playlists) => {
+				if (err) reject(new Error(err));
+				else resolve({ playlists });
+			});
+		});
+	}
+
+	/**
+	 * Gets all artist playlists
+	 *
+	 * @param {object} payload - object that contains the payload
+	 * @param {string} payload.includeSongs - include the songs
+	 * @returns {Promise} - returns promise (reject, resolve)
+	 */
+	GET_ALL_ARTIST_PLAYLISTS(payload) {
+		return new Promise((resolve, reject) => {
+			const includeObject = payload.includeSongs ? null : { songs: false };
+			PlaylistsModule.playlistModel.find({ type: "artist" }, includeObject, (err, playlists) => {
 				if (err) reject(new Error(err));
 				else resolve({ playlists });
 			});
@@ -324,6 +377,105 @@ class _PlaylistsModule extends CoreClass {
 						1,
 						(genre, next) => {
 							PlaylistsModule.runJob("CREATE_GENRE_PLAYLIST", { genre }, this)
+								.then(() => {
+									next();
+								})
+								.catch(err => {
+									next(err);
+								});
+						},
+						err => {
+							if (err) reject(err);
+							else resolve();
+						}
+					);
+				})
+				.catch(err => {
+					reject(err);
+				});
+		});
+	}
+
+	/**
+	 * Gets a artist playlist
+	 *
+	 * @param {object} payload - object that contains the payload
+	 * @param {string} payload.artist - the artist
+	 * @param {string} payload.includeSongs - include the songs
+	 * @returns {Promise} - returns promise (reject, resolve)
+	 */
+	GET_ARTIST_PLAYLIST(payload) {
+		return new Promise((resolve, reject) => {
+			const includeObject = payload.includeSongs ? null : { songs: false };
+			PlaylistsModule.playlistModel.findOne(
+				{ type: "artist", createdFor: payload.artist },
+				includeObject,
+				(err, playlist) => {
+					if (err) reject(new Error(err));
+					else if (!playlist) reject(new Error("Playlist not found"));
+					else resolve({ playlist });
+				}
+			);
+		});
+	}
+
+	/**
+	 * Gets all missing artist playlists
+	 *
+	 * @returns {Promise} - returns promise (reject, resolve)
+	 */
+	GET_MISSING_ARTIST_PLAYLISTS() {
+		return new Promise((resolve, reject) => {
+			SongsModule.runJob("GET_ALL_ARTISTS", {}, this)
+				.then(response => {
+					const { artists } = response;
+					const missingArtists = [];
+					async.eachLimit(
+						artists,
+						1,
+						(artist, next) => {
+							PlaylistsModule.runJob(
+								"GET_ARTIST_PLAYLIST",
+								{ artist: artist.toLowerCase(), includeSongs: false },
+								this
+							)
+								.then(() => {
+									next();
+								})
+								.catch(err => {
+									if (err.message === "Playlist not found") {
+										missingArtists.push(artist);
+										next();
+									} else next(err);
+								});
+						},
+						err => {
+							if (err) reject(err);
+							else resolve({ artists: missingArtists });
+						}
+					);
+				})
+				.catch(err => {
+					reject(err);
+				});
+		});
+	}
+
+	/**
+	 * Creates all missing artist playlists
+	 *
+	 * @returns {Promise} - returns promise (reject, resolve)
+	 */
+	CREATE_MISSING_ARTIST_PLAYLISTS() {
+		return new Promise((resolve, reject) => {
+			PlaylistsModule.runJob("GET_MISSING_ARTIST_PLAYLISTS", {}, this)
+				.then(response => {
+					const { artists } = response;
+					async.eachLimit(
+						artists,
+						1,
+						(artist, next) => {
+							PlaylistsModule.runJob("CREATE_ARTIST_PLAYLIST", { artist }, this)
 								.then(() => {
 									next();
 								})
@@ -645,6 +797,187 @@ class _PlaylistsModule extends CoreClass {
 							PlaylistsModule.runJob("DELETE_PLAYLIST", { playlistId: playlist._id }, this)
 								.then(() => {
 									this.log("INFO", "Deleting orphaned genre playlist");
+									next();
+								})
+								.catch(err => {
+									next(err);
+								});
+						},
+						err => {
+							if (err) reject(new Error(err));
+							else resolve({});
+						}
+					);
+				})
+				.catch(err => {
+					reject(new Error(err));
+				});
+		});
+	}
+
+	/**
+	 * Fills a artist playlist with songs
+	 *
+	 * @param {object} payload - object that contains the payload
+	 * @param {string} payload.artist - the artist
+	 * @returns {Promise} - returns promise (reject, resolve)
+	 */
+	AUTOFILL_ARTIST_PLAYLIST(payload) {
+		return new Promise((resolve, reject) => {
+			async.waterfall(
+				[
+					next => {
+						PlaylistsModule.runJob(
+							"GET_ARTIST_PLAYLIST",
+							{ artist: payload.artist.toLowerCase(), includeSongs: true },
+							this
+						)
+							.then(response => {
+								next(null, response.playlist._id);
+							})
+							.catch(err => {
+								if (err.message === "Playlist not found") {
+									PlaylistsModule.runJob("CREATE_ARTIST_PLAYLIST", { artist: payload.artist }, this)
+										.then(playlistId => {
+											next(null, playlistId);
+										})
+										.catch(err => {
+											next(err);
+										});
+								} else next(err);
+							});
+					},
+
+					(playlistId, next) => {
+						SongsModule.runJob("GET_ALL_SONGS_WITH_ARTIST", { artist: payload.artist }, this)
+							.then(response => {
+								next(null, playlistId, response.songs);
+							})
+							.catch(err => {
+								console.log(err);
+								next(err);
+							});
+					},
+
+					(playlistId, _songs, next) => {
+						const songs = _songs.map(song => {
+							const { _id, youtubeId, title, artists, thumbnail, duration, status } = song;
+							return {
+								_id,
+								youtubeId,
+								title,
+								artists,
+								thumbnail,
+								duration,
+								status
+							};
+						});
+
+						PlaylistsModule.playlistModel.updateOne({ _id: playlistId }, { $set: { songs } }, err => {
+							next(err, playlistId);
+						});
+					},
+
+					(playlistId, next) => {
+						PlaylistsModule.runJob("UPDATE_PLAYLIST", { playlistId }, this)
+							.then(() => {
+								next(null, playlistId);
+							})
+							.catch(next);
+					},
+
+					(playlistId, next) => {
+						StationsModule.runJob("GET_STATIONS_THAT_INCLUDE_OR_EXCLUDE_PLAYLIST", { playlistId }, this)
+							.then(response => {
+								async.eachLimit(
+									response.stationIds,
+									1,
+									(stationId, next) => {
+										PlaylistsModule.runJob("AUTOFILL_STATION_PLAYLIST", { stationId }, this)
+											.then(() => {
+												next();
+											})
+											.catch(err => {
+												next(err);
+											});
+									},
+									err => {
+										if (err) next(err);
+										else next();
+									}
+								);
+							})
+							.catch(err => {
+								next(err);
+							});
+					}
+				],
+				err => {
+					if (err && err !== true) return reject(new Error(err));
+					return resolve({});
+				}
+			);
+		});
+	}
+
+	/**
+	 * Gets orphaned artist playlists
+	 *
+	 * @returns {Promise} - returns promise (reject, resolve)
+	 */
+	GET_ORPHANED_ARTIST_PLAYLISTS() {
+		return new Promise((resolve, reject) => {
+			PlaylistsModule.playlistModel.find({ type: "artist" }, { songs: false }, (err, playlists) => {
+				if (err) reject(new Error(err));
+				else {
+					const orphanedPlaylists = [];
+					async.eachLimit(
+						playlists,
+						1,
+						(playlist, next) => {
+							SongsModule.runJob("GET_ALL_SONGS_WITH_ARTIST", { artist: playlist.createdFor }, this)
+								.then(response => {
+									if (response.songs.length === 0) {
+										StationsModule.runJob(
+											"GET_STATIONS_THAT_INCLUDE_OR_EXCLUDE_PLAYLIST",
+											{ playlistId: playlist._id },
+											this
+										)
+											.then(response => {
+												if (response.stationIds.length === 0) orphanedPlaylists.push(playlist);
+												next();
+											})
+											.catch(next);
+									} else next();
+								})
+								.catch(next);
+						},
+						err => {
+							if (err) reject(new Error(err));
+							else resolve({ playlists: orphanedPlaylists });
+						}
+					);
+				}
+			});
+		});
+	}
+
+	/**
+	 * Deletes all orphaned artist playlists
+	 *
+	 * @returns {Promise} - returns promise (reject, resolve)
+	 */
+	DELETE_ORPHANED_ARTIST_PLAYLISTS() {
+		return new Promise((resolve, reject) => {
+			PlaylistsModule.runJob("GET_ORPHANED_ARTIST_PLAYLISTS", {}, this)
+				.then(response => {
+					async.eachLimit(
+						response.playlists,
+						1,
+						(playlist, next) => {
+							PlaylistsModule.runJob("DELETE_PLAYLIST", { playlistId: playlist._id }, this)
+								.then(() => {
+									this.log("INFO", "Deleting orphaned artist playlist");
 									next();
 								})
 								.catch(err => {
@@ -1026,6 +1359,7 @@ class _PlaylistsModule extends CoreClass {
 	 * @param {string} payload.includeStation - include station playlists
 	 * @param {string} payload.includeUser - include user playlists
 	 * @param {string} payload.includeGenre - include genre playlists
+	 * @param {string} payload.includeArtist - include artist playlists
 	 * @param {string} payload.includeOwn - include own user playlists
 	 * @param {string} payload.userId - the user id of the person requesting
 	 * @param {string} payload.includeSongs - include songs
@@ -1041,6 +1375,7 @@ class _PlaylistsModule extends CoreClass {
 						if (payload.includeStation) types.push("station");
 						if (payload.includeUser) types.push("user");
 						if (payload.includeGenre) types.push("genre");
+						if (payload.includeArtist) types.push("artist");
 						if (types.length === 0 && !payload.includeOwn) return next("No types have been included.");
 
 						const privacies = ["public"];
@@ -1180,6 +1515,51 @@ class _PlaylistsModule extends CoreClass {
 
 					(genre, next) => {
 						PlaylistsModule.runJob("AUTOFILL_GENRE_PLAYLIST", { genre }, this)
+							.then(() => {
+								next();
+							})
+							.catch(err => {
+								next(err);
+							});
+					}
+				],
+				err => {
+					if (err && err !== true) return reject(new Error(err));
+					return resolve();
+				}
+			);
+		});
+	}
+
+	/**
+	 * Clears and refills a artist playlist
+	 *
+	 * @param {object} payload - object that contains the payload
+	 * @param {string} payload.playlistId - the id of the playlist we are trying to clear and refill
+	 * @returns {Promise} - returns promise (reject, resolve)
+	 */
+	CLEAR_AND_REFILL_ARTIST_PLAYLIST(payload) {
+		return new Promise((resolve, reject) => {
+			const { playlistId } = payload;
+			async.waterfall(
+				[
+					next => {
+						PlaylistsModule.runJob("GET_PLAYLIST", { playlistId }, this)
+							.then(playlist => {
+								next(null, playlist);
+							})
+							.catch(err => {
+								next(err);
+							});
+					},
+
+					(playlist, next) => {
+						if (playlist.type !== "artist") next("This playlist is not a artist playlist.");
+						else next(null, playlist.createdFor);
+					},
+
+					(artist, next) => {
+						PlaylistsModule.runJob("AUTOFILL_ARTIST_PLAYLIST", { artist }, this)
 							.then(() => {
 								next();
 							})

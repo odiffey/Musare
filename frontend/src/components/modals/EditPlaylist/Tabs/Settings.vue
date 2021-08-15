@@ -26,7 +26,8 @@
 		<div
 			v-if="
 				userId === playlist.createdBy ||
-				(playlist.type === 'genre' && isAdmin())
+				((playlist.type === 'genre' || playlist.type === 'artist') &&
+					isAdmin())
 			"
 		>
 			<label class="label"> Change privacy </label>
@@ -108,7 +109,8 @@ export default {
 			const { privacy } = this.playlist;
 			if (privacy === "public" || privacy === "private") {
 				this.socket.dispatch(
-					this.playlist.type === "genre"
+					this.playlist.type === "genre" ||
+						this.playlist.type === "artist"
 						? "playlists.updatePrivacyAdmin"
 						: "playlists.updatePrivacy",
 					this.playlist._id,

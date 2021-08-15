@@ -16,6 +16,12 @@
 			</button>
 			<button
 				class="button is-primary"
+				@click="deleteOrphanedArtistPlaylists()"
+			>
+				Delete orphaned artist playlists
+			</button>
+			<button
+				class="button is-primary"
 				@click="requestOrphanedPlaylistSongs()"
 			>
 				Request orphaned playlist songs
@@ -31,6 +37,12 @@
 				@click="clearAndRefillAllGenrePlaylists()"
 			>
 				Clear and refill all genre playlists
+			</button>
+			<button
+				class="button is-primary"
+				@click="clearAndRefillAllArtistPlaylists()"
+			>
+				Clear and refill all artist playlists
 			</button>
 			<br />
 			<br />
@@ -184,6 +196,15 @@ export default {
 				}
 			);
 		},
+		deleteOrphanedArtistPlaylists() {
+			this.socket.dispatch(
+				"playlists.deleteOrphanedArtistPlaylists",
+				res => {
+					if (res.status === "success") new Toast(res.message);
+					else new Toast(`Error: ${res.message}`);
+				}
+			);
+		},
 		requestOrphanedPlaylistSongs() {
 			this.socket.dispatch(
 				"playlists.requestOrphanedPlaylistSongs",
@@ -210,6 +231,20 @@ export default {
 		clearAndRefillAllGenrePlaylists() {
 			this.socket.dispatch(
 				"playlists.clearAndRefillAllGenrePlaylists",
+				res => {
+					if (res.status === "success")
+						new Toast({ content: res.message, timeout: 4000 });
+					else
+						new Toast({
+							content: `Error: ${res.message}`,
+							timeout: 4000
+						});
+				}
+			);
+		},
+		clearAndRefillAllArtistPlaylists() {
+			this.socket.dispatch(
+				"playlists.clearAndRefillAllArtistPlaylists",
 				res => {
 					if (res.status === "success")
 						new Toast({ content: res.message, timeout: 4000 });

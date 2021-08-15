@@ -405,6 +405,15 @@ export default {
 										.catch(() => {});
 								});
 
+							existingSong.artists
+								.concat(song.artists)
+								.filter((value, index, self) => self.indexOf(value) === index)
+								.forEach(artist => {
+									PlaylistsModule.runJob("AUTOFILL_ARTIST_PLAYLIST", { artist })
+										.then(() => {})
+										.catch(() => {});
+								});
+
 							next(null, song);
 						})
 						.catch(next);
@@ -684,6 +693,12 @@ export default {
 							.catch(() => {});
 					});
 
+					song.artists.forEach(artist => {
+						PlaylistsModule.runJob("AUTOFILL_ARTIST_PLAYLIST", { artist })
+							.then(() => {})
+							.catch(() => {});
+					});
+
 					SongsModule.runJob("UPDATE_SONG", { songId: song._id });
 					next(null, song, oldStatus);
 				}
@@ -752,6 +767,12 @@ export default {
 				(song, next) => {
 					song.genres.forEach(genre => {
 						PlaylistsModule.runJob("AUTOFILL_GENRE_PLAYLIST", { genre })
+							.then(() => {})
+							.catch(() => {});
+					});
+
+					song.artists.forEach(artist => {
+						PlaylistsModule.runJob("AUTOFILL_ARTIST_PLAYLIST", { artist })
 							.then(() => {})
 							.catch(() => {});
 					});
