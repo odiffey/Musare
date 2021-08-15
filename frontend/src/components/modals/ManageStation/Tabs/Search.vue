@@ -77,29 +77,25 @@
 				>
 					<template #actions>
 						<transition name="search-query-actions" mode="out-in">
-							<a
-								class="button is-success"
+							<i
 								v-if="result.isAddedToQueue"
+								class="material-icons added-to-queue-icon"
+								content="Song Added to Queue"
+								v-tippy
 								key="added-to-queue"
+								>library_add_check</i
 							>
-								<i class="material-icons icon-with-button"
-									>done</i
-								>
-								Added to queue
-							</a>
-							<a
-								class="button is-dark"
+							<i
 								v-else
+								class="material-icons add-to-queue-icon"
 								@click.prevent="
 									addSongToQueue(result.id, index)
 								"
+								content="Add Song to Queue"
+								v-tippy
 								key="add-to-queue"
+								>queue</i
 							>
-								<i class="material-icons icon-with-button"
-									>add</i
-								>
-								Add to queue
-							</a>
 						</transition>
 					</template>
 				</search-query-item>

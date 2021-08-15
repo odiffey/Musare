@@ -29,7 +29,8 @@
 					<div class="youtube-icon"></div>
 				</a>
 				<slot name="actions" />
-			</div>		</div>
+			</div>
+		</div>
 	</div>
 </template>
 
@@ -61,6 +62,16 @@ export default {
 .search-query-actions-leave-to {
 	transform: translateX(20px);
 	opacity: 0;
+}
+
+.search-query-item {
+	.add-to-queue-icon {
+		color: var(--primary-color);
+	}
+
+	.added-to-queue-icon {
+		color: var(--green);
+	}
 }
 </style>
 
