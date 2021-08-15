@@ -273,7 +273,6 @@ export default {
 			margin-top: -1px;
 			line-height: 24px;
 			display: flex;
-			// padding: 4px;
 			padding: 8px;
 			display: flex;
 
