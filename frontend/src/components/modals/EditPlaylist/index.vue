@@ -631,24 +631,25 @@ export default {
 	}
 
 	.edit-playlist-modal.modal .modal-card-body .custom-modal-body {
-		.section {
-			background-color: transparent !important;
-		}
 		.left-section {
 			#playlist-info-section {
 				background-color: var(--dark-grey-3) !important;
 				border: 0;
 			}
 			.tabs-container {
+				background-color: transparent !important;
 				.tab-selection .button {
 					background: var(--dark-grey);
 					color: var(--white);
 				}
 				.tab {
 					background-color: var(--dark-grey-3) !important;
-					border: 0;
+					border: 0 !important;
 				}
 			}
+		}
+		.right-section .section {
+			border-radius: 5px;
 		}
 	}
 }
