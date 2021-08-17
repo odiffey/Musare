@@ -9,7 +9,7 @@ import store from "./store";
 
 import AppComponent from "./App.vue";
 
-const REQUIRED_CONFIG_VERSION = 6;
+const REQUIRED_CONFIG_VERSION = 7;
 
 lofig.folder = "../config/default.json";
 
