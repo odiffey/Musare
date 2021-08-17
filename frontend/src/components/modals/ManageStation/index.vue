@@ -48,11 +48,11 @@
 										!station.locked)
 								"
 								class="button is-default"
-								:class="{ selected: tab === 'search' }"
-								ref="search-tab"
-								@click="showTab('search')"
+								:class="{ selected: tab === 'songs' }"
+								ref="songs-tab"
+								@click="showTab('songs')"
 							>
-								Search
+								Add Songs
 							</button>
 							<button
 								v-if="isOwnerOrAdmin()"
@@ -81,7 +81,7 @@
 							class="tab"
 							v-show="tab === 'playlists'"
 						/>
-						<search
+						<songs
 							v-if="
 								loggedIn &&
 								station.type === 'community' &&
@@ -90,7 +90,7 @@
 									!station.locked)
 							"
 							class="tab"
-							v-show="tab === 'search'"
+							v-show="tab === 'songs'"
 						/>
 						<blacklist
 							v-if="isOwnerOrAdmin()"
@@ -205,7 +205,7 @@ import Modal from "../../Modal.vue";
 
 import Settings from "./Tabs/Settings.vue";
 import Playlists from "./Tabs/Playlists.vue";
-import Search from "./Tabs/Search.vue";
+import Songs from "./Tabs/Songs.vue";
 import Blacklist from "./Tabs/Blacklist.vue";
 
 export default {
@@ -216,7 +216,7 @@ export default {
 		SongItem,
 		Settings,
 		Playlists,
-		Search,
+		Songs,
 		Blacklist
 	},
 	props: {
@@ -250,7 +250,7 @@ export default {
 				this.editStation(station);
 
 				if (!this.isOwnerOrAdmin() && this.station.partyMode)
-					this.showTab("search");
+					this.showTab("songs");
 
 				const currentSong = res.data.station.currentSong
 					? res.data.station.currentSong

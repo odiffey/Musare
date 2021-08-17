@@ -83,7 +83,7 @@
 					!station.locked ||
 					(station.locked && isAdminOnly() && dismissedWarning))
 			"
-			@click="openModal('manageStation') & showManageStationTab('search')"
+			@click="openModal('manageStation') & showManageStationTab('songs')"
 		>
 			<i class="material-icons icon-with-button">queue</i>
 			<span> Add Song To Queue </span>
