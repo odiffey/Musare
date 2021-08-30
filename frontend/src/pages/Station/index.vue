@@ -762,6 +762,46 @@
 				>
 			</template>
 		</floating-box>
+		<floating-box
+			id="keyboardShortcutsHelper"
+			ref="keyboardShortcutsHelper"
+		>
+			<template #body>
+				<div>
+					<div v-if="isOwnerOrAdmin()">
+						<span class="biggest"><b>Admin/owner</b></span>
+						<span><b>Ctrl + Space</b> - Pause/resume station</span>
+						<span><b>Ctrl + Numpad right</b> - Skip station</span>
+					</div>
+					<hr v-if="isOwnerOrAdmin()" />
+					<div>
+						<span class="biggest"><b>Volume</b></span>
+						<span
+							><b>Ctrl + Numpad up/down</b> - Volume up/down
+							10%</span
+						>
+						<span
+							><b>Ctrl + Shift + Numpad up/down</b> - Volume
+							up/down 10%</span
+						>
+					</div>
+					<hr />
+					<div>
+						<span class="biggest"><b>Misc</b></span>
+						<span><b>Ctrl + D</b> - Toggles debug box</span>
+						<span><b>Ctrl + Shift + D</b> - Resets debug box</span>
+						<span
+							><b>Ctrl + /</b> - Toggles keyboard shortcuts
+							box</span
+						>
+						<span
+							><b>Ctrl + Shift + /</b> - Resets keyboard shortcuts
+							box</span
+						>
+					</div>
+				</div>
+			</template>
+		</floating-box>
 
 		<Z404 v-if="!exists"></Z404>
 	</div>
@@ -882,8 +922,12 @@ export default {
 				typeof this.currentSong.disliked === "boolean"
 			);
 		},
+		aModalIsOpen() {
+			return Object.keys(this.currentlyActive).length > 0;
+		},
 		...mapState("modalVisibility", {
-			modals: state => state.modals
+			modals: state => state.modals,
+			currentlyActive: state => state.currentlyActive
 		}),
 		...mapState("modals/editSong", {
 			video: state => state.video
@@ -1000,6 +1044,12 @@ export default {
 		);
 
 		this.socket.on("event:station.nextSong", res => {
+			const previousSong = this.currentSong.youtubeId
+				? this.currentSong
+				: null;
+
+			this.updatePreviousSong(previousSong);
+
 			const { currentSong, startedAt, paused, timePaused } = res.data;
 
 			this.setCurrentSong({
@@ -1904,6 +1954,12 @@ export default {
 		resetPlayerDebugBox() {
 			this.$refs.playerDebugBox.resetBox();
 		},
+		toggleKeyboardShortcutsHelper() {
+			this.$refs.keyboardShortcutsHelper.toggleBox();
+		},
+		resetKeyboardShortcutsHelper() {
+			this.$refs.keyboardShortcutsHelper.resetBox();
+		},
 		join() {
 			this.socket.dispatch(
 				"stations.join",
@@ -2009,11 +2065,12 @@ export default {
 							keyboardShortcuts.registerShortcut(
 								"station.pauseResume",
 								{
-									keyCode: 32,
+									keyCode: 32, // Spacebar
 									shift: false,
 									ctrl: true,
 									preventDefault: true,
 									handler: () => {
+										if (this.aModalIsOpen) return;
 										if (this.stationPaused)
 											this.resumeStation();
 										else this.pauseStation();
@@ -2024,11 +2081,12 @@ export default {
 							keyboardShortcuts.registerShortcut(
 								"station.skipStation",
 								{
-									keyCode: 39,
+									keyCode: 39, // Right arrow key
 									shift: false,
 									ctrl: true,
 									preventDefault: true,
 									handler: () => {
+										if (this.aModalIsOpen) return;
 										this.skipStation();
 									}
 								}
@@ -2038,11 +2096,12 @@ export default {
 						keyboardShortcuts.registerShortcut(
 							"station.lowerVolumeLarge",
 							{
-								keyCode: 40,
+								keyCode: 40, // Down arrow key
 								shift: false,
 								ctrl: true,
 								preventDefault: true,
 								handler: () => {
+									if (this.aModalIsOpen) return;
 									this.volumeSliderValue -= 1000;
 									this.changeVolume();
 								}
@@ -2052,11 +2111,12 @@ export default {
 						keyboardShortcuts.registerShortcut(
 							"station.lowerVolumeSmall",
 							{
-								keyCode: 40,
+								keyCode: 40, // Down arrow key
 								shift: true,
 								ctrl: true,
 								preventDefault: true,
 								handler: () => {
+									if (this.aModalIsOpen) return;
 									this.volumeSliderValue -= 100;
 									this.changeVolume();
 								}
@@ -2066,11 +2126,12 @@ export default {
 						keyboardShortcuts.registerShortcut(
 							"station.increaseVolumeLarge",
 							{
-								keyCode: 38,
+								keyCode: 38, // Up arrow key
 								shift: false,
 								ctrl: true,
 								preventDefault: true,
 								handler: () => {
+									if (this.aModalIsOpen) return;
 									this.volumeSliderValue += 1000;
 									this.changeVolume();
 								}
@@ -2080,11 +2141,12 @@ export default {
 						keyboardShortcuts.registerShortcut(
 							"station.increaseVolumeSmall",
 							{
-								keyCode: 38,
+								keyCode: 38, // Up arrow key
 								shift: true,
 								ctrl: true,
 								preventDefault: true,
 								handler: () => {
+									if (this.aModalIsOpen) return;
 									this.volumeSliderValue += 100;
 									this.changeVolume();
 								}
@@ -2094,12 +2156,40 @@ export default {
 						keyboardShortcuts.registerShortcut(
 							"station.toggleDebug",
 							{
-								keyCode: 68,
+								keyCode: 68, // D key
 								shift: false,
 								ctrl: true,
 								preventDefault: true,
 								handler: () => {
+									if (this.aModalIsOpen) return;
 									this.togglePlayerDebugBox();
+								}
+							}
+						);
+
+						keyboardShortcuts.registerShortcut(
+							"station.toggleKeyboardShortcutsHelper",
+							{
+								keyCode: 191, // '/' key
+								ctrl: true,
+								preventDefault: true,
+								handler: () => {
+									if (this.aModalIsOpen) return;
+									this.toggleKeyboardShortcutsHelper();
+								}
+							}
+						);
+
+						keyboardShortcuts.registerShortcut(
+							"station.resetKeyboardShortcutsHelper",
+							{
+								keyCode: 191, // '/' key
+								ctrl: true,
+								shift: true,
+								preventDefault: true,
+								handler: () => {
+									if (this.aModalIsOpen) return;
+									this.resetKeyboardShortcutsHelper();
 								}
 							}
 						);
@@ -2210,6 +2300,7 @@ export default {
 			"updateUserCount",
 			"updateUsers",
 			"updateCurrentSong",
+			"updatePreviousSong",
 			"updateNextSong",
 			"updateSongsList",
 			"repositionSongInList",
