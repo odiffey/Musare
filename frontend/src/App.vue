@@ -144,16 +144,6 @@ export default {
 			}
 		});
 
-		if (localStorage.getItem("github_redirect")) {
-			setTimeout(
-				() =>
-					this.$router.push(localStorage.getItem("github_redirect")),
-				50
-			);
-
-			localStorage.removeItem("github_redirect");
-		}
-
 		this.disconnectedMessage = new Toast({
 			content: "Could not connect to the server.",
 			persistent: true,
@@ -162,8 +152,29 @@ export default {
 
 		this.disconnectedMessage.hide();
 
-		ws.onConnect(true, () => {
+		ws.onConnect(() => {
 			this.socketConnected = true;
+
+			this.socket.dispatch("users.getPreferences", res => {
+				if (res.status === "success") {
+					const { preferences } = res.data;
+
+					this.changeAutoSkipDisliked(preferences.autoSkipDisliked);
+					this.changeNightmode(preferences.nightmode);
+					this.changeActivityLogPublic(preferences.activityLogPublic);
+					this.changeAnonymousSongRequests(
+						preferences.anonymousSongRequests
+					);
+					this.changeActivityWatch(preferences.activityWatch);
+
+					if (this.nightmode) this.enableNightmode();
+					else this.disableNightmode();
+				}
+			});
+
+			this.socket.on("keep.event:user.session.deleted", () =>
+				window.location.reload()
+			);
 		});
 
 		ws.onDisconnect(true, () => {
@@ -190,33 +201,17 @@ export default {
 				this.$router.push({ query: {} });
 				new Toast({ content: msg, timeout: 20000 });
 			}
+
+			if (localStorage.getItem("github_redirect")) {
+				this.$router.push(localStorage.getItem("github_redirect"));
+				localStorage.removeItem("github_redirect");
+			}
 		});
 
 		if (localStorage.getItem("nightmode") === "true") {
 			this.changeNightmode(true);
 			this.enableNightmode();
 		}
-
-		this.socket.dispatch("users.getPreferences", res => {
-			if (res.status === "success") {
-				const { preferences } = res.data;
-
-				this.changeAutoSkipDisliked(preferences.autoSkipDisliked);
-				this.changeNightmode(preferences.nightmode);
-				this.changeActivityLogPublic(preferences.activityLogPublic);
-				this.changeAnonymousSongRequests(
-					preferences.anonymousSongRequests
-				);
-				this.changeActivityWatch(preferences.activityWatch);
-
-				if (this.nightmode) this.enableNightmode();
-				else this.disableNightmode();
-			}
-		});
-
-		this.socket.on("keep.event:user.session.deleted", () =>
-			window.location.reload()
-		);
 	},
 	methods: {
 		toggleNightMode() {

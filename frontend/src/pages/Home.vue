@@ -529,8 +529,7 @@ export default {
 	async mounted() {
 		this.siteSettings = await lofig.get("siteSettings");
 
-		if (this.socket.readyState === 1) this.init();
-		ws.onConnect(() => this.init());
+		ws.onConnect(this.init);
 
 		this.socket.on("event:station.created", res => {
 			const { station } = res.data;

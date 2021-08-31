@@ -182,7 +182,7 @@ export default {
 		this.changeTab(this.$route.path);
 	},
 	beforeUnmount() {
-		this.socket.dispatch("apis.leaveRooms", () => {});
+		this.socket.dispatch("apis.leaveRooms");
 	},
 	methods: {
 		changeTab(path) {

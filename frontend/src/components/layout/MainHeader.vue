@@ -62,6 +62,8 @@
 <script>
 import { mapState, mapGetters, mapActions } from "vuex";
 
+import ws from "@/ws";
+
 export default {
 	props: {
 		hideLogo: { type: Boolean, default: false },
@@ -95,6 +97,12 @@ export default {
 	},
 
 	methods: {
+		init() {
+			this.socket.dispatch("users.getPreferences", res => {
+				if (res.status === "success")
+					this.localNightmode = res.data.preferences.nightmode;
+			});
+		},
 		...mapActions("modalVisibility", ["openModal"]),
 		...mapActions("user/auth", ["logout"])
 	}

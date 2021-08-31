@@ -73,7 +73,6 @@ export default {
 			userRole: state => state.user.auth.role
 		})
 	},
-	mounted() {},
 	methods: {
 		isEditable() {
 			return (

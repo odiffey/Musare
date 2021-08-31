@@ -53,6 +53,8 @@
 import Toast from "toasters";
 import { mapState, mapGetters, mapActions } from "vuex";
 
+import ws from "@/ws";
+
 export default {
 	data() {
 		return {
@@ -92,10 +94,7 @@ export default {
 	async mounted() {
 		this.localNightmode = JSON.parse(localStorage.getItem("nightmode"));
 
-		this.socket.dispatch("users.getPreferences", res => {
-			if (res.status === "success")
-				this.localNightmode = res.data.preferences.nightmode;
-		});
+		ws.onConnect(this.init);
 
 		this.socket.on("keep.event:user.preferences.updated", res => {
 			if (res.data.preferences.nightmode !== undefined)
@@ -106,6 +105,12 @@ export default {
 		this.siteSettings = await lofig.get("siteSettings");
 	},
 	methods: {
+		init() {
+			this.socket.dispatch("users.getPreferences", res => {
+				if (res.status === "success")
+					this.localNightmode = res.data.preferences.nightmode;
+			});
+		},
 		...mapActions("user/preferences", ["changeNightmode"])
 	}
 };
