@@ -115,6 +115,17 @@ export default {
 		background-color: var(--dark-grey-3) !important;
 	}
 
+	@media screen and (max-width: 768px) {
+		.nav-menu {
+			background-color: var(--dark-grey-3) !important;
+		}
+
+		.nav-item,
+		.grouped {
+			border-color: transparent;
+		}
+	}
+
 	.nav-item {
 		color: var(--light-grey-2) !important;
 	}
@@ -152,11 +163,7 @@ export default {
 
 	.nav-toggle {
 		height: 64px;
-
-		&:hover,
-		&:active {
-			filter: brightness(95%);
-		}
+		background-color: transparent;
 
 		span {
 			background-color: var(--white);
@@ -189,5 +196,10 @@ export default {
 	margin: 0;
 	display: flex;
 	text-decoration: none;
+	border-top: 1px solid rgba(219, 219, 219, 0.5);
+
+	.nav-item {
+		border-top: 0;
+	}
 }
 </style>
