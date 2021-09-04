@@ -10,10 +10,10 @@
 
 <script>
 import { mapState, mapGetters, mapActions } from "vuex";
-import { format, formatDistance, parseISO } from "date-fns";
+import { format, formatDistance, parseISO } from "date-fns"; // eslint-disable-line no-unused-vars
+import Toast from "toasters";
 import ws from "@/ws";
 
-import Toast from "toasters";
 import Modal from "../Modal.vue";
 import PunishmentItem from "../PunishmentItem.vue";
 

@@ -62,8 +62,6 @@
 <script>
 import { mapState, mapGetters, mapActions } from "vuex";
 
-import ws from "@/ws";
-
 export default {
 	props: {
 		hideLogo: { type: Boolean, default: false },

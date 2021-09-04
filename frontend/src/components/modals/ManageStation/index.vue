@@ -197,6 +197,7 @@
 import { mapState, mapGetters, mapActions } from "vuex";
 
 import Toast from "toasters";
+import ws from "@/ws";
 
 import Confirm from "@/components/Confirm.vue";
 import Queue from "@/components/Queue.vue";
@@ -244,176 +245,7 @@ export default {
 		})
 	},
 	mounted() {
-		this.socket.dispatch(`stations.getStationById`, this.stationId, res => {
-			if (res.status === "success") {
-				const { station } = res.data;
-				this.editStation(station);
-
-				if (!this.isOwnerOrAdmin() && this.station.partyMode)
-					this.showTab("songs");
-
-				const currentSong = res.data.station.currentSong
-					? res.data.station.currentSong
-					: {};
-
-				this.updateCurrentSong(currentSong);
-
-				this.updateStationPaused(res.data.station.paused);
-
-				this.socket.dispatch(
-					"stations.getStationIncludedPlaylistsById",
-					this.stationId,
-					res => {
-						if (res.status === "success")
-							this.setIncludedPlaylists(res.data.playlists);
-					}
-				);
-
-				this.socket.dispatch(
-					"stations.getStationExcludedPlaylistsById",
-					this.stationId,
-					res => {
-						if (res.status === "success")
-							this.setExcludedPlaylists(res.data.playlists);
-					}
-				);
-
-				this.socket.dispatch(
-					"stations.getQueue",
-					this.stationId,
-					res => {
-						if (res.status === "success")
-							this.updateSongsList(res.data.queue);
-					}
-				);
-
-				this.socket.dispatch(
-					"apis.joinRoom",
-					`manage-station.${this.stationId}`
-				);
-
-				this.socket.on(
-					"event:station.name.updated",
-					res => {
-						this.station.name = res.data.name;
-					},
-					{ modal: "manageStation" }
-				);
-
-				this.socket.on(
-					"event:station.displayName.updated",
-					res => {
-						this.station.displayName = res.data.displayName;
-					},
-					{ modal: "manageStation" }
-				);
-
-				this.socket.on(
-					"event:station.description.updated",
-					res => {
-						this.station.description = res.data.description;
-					},
-					{ modal: "manageStation" }
-				);
-
-				this.socket.on(
-					"event:station.partyMode.updated",
-					res => {
-						if (this.station.type === "community")
-							this.station.partyMode = res.data.partyMode;
-					},
-					{ modal: "manageStation" }
-				);
-
-				this.socket.on(
-					"event:station.playMode.updated",
-					res => {
-						this.station.playMode = res.data.playMode;
-					},
-					{ modal: "manageStation" }
-				);
-
-				this.socket.on(
-					"event:station.theme.updated",
-					res => {
-						const { theme } = res.data;
-						this.station.theme = theme;
-					},
-					{ modal: "manageStation" }
-				);
-
-				this.socket.on(
-					"event:station.privacy.updated",
-					res => {
-						this.station.privacy = res.data.privacy;
-					},
-					{ modal: "manageStation" }
-				);
-
-				this.socket.on(
-					"event:station.queue.lock.toggled",
-					res => {
-						this.station.locked = res.data.locked;
-					},
-					{ modal: "manageStation" }
-				);
-
-				this.socket.on(
-					"event:station.includedPlaylist",
-					res => {
-						const { playlist } = res.data;
-						const playlistIndex = this.includedPlaylists
-							.map(includedPlaylist => includedPlaylist._id)
-							.indexOf(playlist._id);
-						if (playlistIndex === -1)
-							this.includedPlaylists.push(playlist);
-					},
-					{ modal: "manageStation" }
-				);
-
-				this.socket.on(
-					"event:station.excludedPlaylist",
-					res => {
-						const { playlist } = res.data;
-						const playlistIndex = this.excludedPlaylists
-							.map(excludedPlaylist => excludedPlaylist._id)
-							.indexOf(playlist._id);
-						if (playlistIndex === -1)
-							this.excludedPlaylists.push(playlist);
-					},
-					{ modal: "manageStation" }
-				);
-
-				this.socket.on(
-					"event:station.removedIncludedPlaylist",
-					res => {
-						const { playlistId } = res.data;
-						const playlistIndex = this.includedPlaylists
-							.map(playlist => playlist._id)
-							.indexOf(playlistId);
-						if (playlistIndex >= 0)
-							this.includedPlaylists.splice(playlistIndex, 1);
-					},
-					{ modal: "manageStation" }
-				);
-
-				this.socket.on(
-					"event:station.removedExcludedPlaylist",
-					res => {
-						const { playlistId } = res.data;
-						const playlistIndex = this.excludedPlaylists
-							.map(playlist => playlist._id)
-							.indexOf(playlistId);
-						if (playlistIndex >= 0)
-							this.excludedPlaylists.splice(playlistIndex, 1);
-					},
-					{ modal: "manageStation" }
-				);
-			} else {
-				new Toast(`Station with that ID not found`);
-				this.closeModal("manageStation");
-			}
-		});
+		ws.onConnect(this.init);
 
 		this.socket.on(
 			"event:station.queue.updated",
@@ -459,6 +291,196 @@ export default {
 		this.clearStation();
 	},
 	methods: {
+		init() {
+			this.socket.dispatch(
+				`stations.getStationById`,
+				this.stationId,
+				res => {
+					if (res.status === "success") {
+						const { station } = res.data;
+						this.editStation(station);
+
+						if (!this.isOwnerOrAdmin() && this.station.partyMode)
+							this.showTab("songs");
+
+						const currentSong = res.data.station.currentSong
+							? res.data.station.currentSong
+							: {};
+
+						this.updateCurrentSong(currentSong);
+
+						this.updateStationPaused(res.data.station.paused);
+
+						this.socket.dispatch(
+							"stations.getStationIncludedPlaylistsById",
+							this.stationId,
+							res => {
+								if (res.status === "success")
+									this.setIncludedPlaylists(
+										res.data.playlists
+									);
+							}
+						);
+
+						this.socket.dispatch(
+							"stations.getStationExcludedPlaylistsById",
+							this.stationId,
+							res => {
+								if (res.status === "success")
+									this.setExcludedPlaylists(
+										res.data.playlists
+									);
+							}
+						);
+
+						this.socket.dispatch(
+							"stations.getQueue",
+							this.stationId,
+							res => {
+								if (res.status === "success")
+									this.updateSongsList(res.data.queue);
+							}
+						);
+
+						this.socket.dispatch(
+							"apis.joinRoom",
+							`manage-station.${this.stationId}`
+						);
+
+						this.socket.on(
+							"event:station.name.updated",
+							res => {
+								this.station.name = res.data.name;
+							},
+							{ modal: "manageStation" }
+						);
+
+						this.socket.on(
+							"event:station.displayName.updated",
+							res => {
+								this.station.displayName = res.data.displayName;
+							},
+							{ modal: "manageStation" }
+						);
+
+						this.socket.on(
+							"event:station.description.updated",
+							res => {
+								this.station.description = res.data.description;
+							},
+							{ modal: "manageStation" }
+						);
+
+						this.socket.on(
+							"event:station.partyMode.updated",
+							res => {
+								if (this.station.type === "community")
+									this.station.partyMode = res.data.partyMode;
+							},
+							{ modal: "manageStation" }
+						);
+
+						this.socket.on(
+							"event:station.playMode.updated",
+							res => {
+								this.station.playMode = res.data.playMode;
+							},
+							{ modal: "manageStation" }
+						);
+
+						this.socket.on(
+							"event:station.theme.updated",
+							res => {
+								const { theme } = res.data;
+								this.station.theme = theme;
+							},
+							{ modal: "manageStation" }
+						);
+
+						this.socket.on(
+							"event:station.privacy.updated",
+							res => {
+								this.station.privacy = res.data.privacy;
+							},
+							{ modal: "manageStation" }
+						);
+
+						this.socket.on(
+							"event:station.queue.lock.toggled",
+							res => {
+								this.station.locked = res.data.locked;
+							},
+							{ modal: "manageStation" }
+						);
+
+						this.socket.on(
+							"event:station.includedPlaylist",
+							res => {
+								const { playlist } = res.data;
+								const playlistIndex = this.includedPlaylists
+									.map(
+										includedPlaylist => includedPlaylist._id
+									)
+									.indexOf(playlist._id);
+								if (playlistIndex === -1)
+									this.includedPlaylists.push(playlist);
+							},
+							{ modal: "manageStation" }
+						);
+
+						this.socket.on(
+							"event:station.excludedPlaylist",
+							res => {
+								const { playlist } = res.data;
+								const playlistIndex = this.excludedPlaylists
+									.map(
+										excludedPlaylist => excludedPlaylist._id
+									)
+									.indexOf(playlist._id);
+								if (playlistIndex === -1)
+									this.excludedPlaylists.push(playlist);
+							},
+							{ modal: "manageStation" }
+						);
+
+						this.socket.on(
+							"event:station.removedIncludedPlaylist",
+							res => {
+								const { playlistId } = res.data;
+								const playlistIndex = this.includedPlaylists
+									.map(playlist => playlist._id)
+									.indexOf(playlistId);
+								if (playlistIndex >= 0)
+									this.includedPlaylists.splice(
+										playlistIndex,
+										1
+									);
+							},
+							{ modal: "manageStation" }
+						);
+
+						this.socket.on(
+							"event:station.removedExcludedPlaylist",
+							res => {
+								const { playlistId } = res.data;
+								const playlistIndex = this.excludedPlaylists
+									.map(playlist => playlist._id)
+									.indexOf(playlistId);
+								if (playlistIndex >= 0)
+									this.excludedPlaylists.splice(
+										playlistIndex,
+										1
+									);
+							},
+							{ modal: "manageStation" }
+						);
+					} else {
+						new Toast(`Station with that ID not found`);
+						this.closeModal("manageStation");
+					}
+				}
+			);
+		},
 		isOwner() {
 			return this.loggedIn && this.userId === this.station.owner;
 		},
