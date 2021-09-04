@@ -25,14 +25,14 @@
 		</span>
 
 		<div class="nav-right nav-menu" :class="{ 'is-active': isMobile }">
-			<router-link
-				v-if="role === 'admin'"
-				class="nav-item admin"
-				to="/admin"
-			>
-				<strong>Admin</strong>
-			</router-link>
 			<span v-if="loggedIn" class="grouped">
+				<router-link
+					v-if="role === 'admin'"
+					class="nav-item admin"
+					to="/admin"
+				>
+					<strong>Admin</strong>
+				</router-link>
 				<router-link
 					class="nav-item"
 					:to="{
@@ -108,19 +108,12 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-.night-mode {
-	.nav {
-		background-color: var(--dark-grey-3) !important;
-	}
+.night-mode .nav {
+	background-color: var(--dark-grey-3) !important;
 
 	@media screen and (max-width: 768px) {
 		.nav-menu {
 			background-color: var(--dark-grey-3) !important;
-		}
-
-		.nav-item,
-		.grouped {
-			border-color: transparent;
 		}
 	}
 
@@ -184,20 +177,40 @@ export default {
 	.nav-item {
 		font-size: 17px;
 		color: var(--white);
+		border-top: 0;
 
-		&:hover {
+		&:hover,
+		&:focus {
 			color: var(--white);
 		}
 	}
-}
-.grouped {
-	margin: 0;
-	display: flex;
-	text-decoration: none;
-	border-top: 1px solid rgba(219, 219, 219, 0.5);
 
-	.nav-item {
-		border-top: 0;
+	.grouped {
+		margin: 0;
+		display: flex;
+		text-decoration: none;
+
+		.nav-item {
+			&:hover,
+			&:focus {
+				border-top: 1px solid white;
+				height: calc(100% - 1px);
+			}
+		}
+	}
+}
+
+@media screen and (max-width: 768px) {
+	.nav .nav-menu .grouped {
+		flex-direction: column;
+		.nav-item {
+			padding: 10px 20px;
+			&:hover,
+			&:focus {
+				border-top: 0;
+				height: unset;
+			}
+		}
 	}
 }
 </style>
