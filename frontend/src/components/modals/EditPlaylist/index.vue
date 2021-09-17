@@ -118,7 +118,7 @@
 											}"
 											:ref="`song-item-${index}`"
 										>
-											<template #actions>
+											<template #tippyActions>
 												<i
 													class="
 														material-icons
