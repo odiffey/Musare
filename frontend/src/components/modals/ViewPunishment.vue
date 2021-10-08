@@ -11,9 +11,9 @@
 <script>
 import { mapState, mapGetters, mapActions } from "vuex";
 import { format, formatDistance, parseISO } from "date-fns";
+import Toast from "toasters";
 import ws from "@/ws";
 
-import Toast from "toasters";
 import Modal from "../Modal.vue";
 import PunishmentItem from "../PunishmentItem.vue";
 
