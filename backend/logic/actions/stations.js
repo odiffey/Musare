@@ -3050,7 +3050,6 @@ export default {
 					song.requestedBy = session.userId;
 					song.requestedAt = Date.now();
 					return next(null, song);
-					return next(null, song, station);
 				},
 
 				(song, next) => {
