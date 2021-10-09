@@ -328,6 +328,7 @@ import { mapState, mapGetters, mapActions } from "vuex";
 
 import draggable from "vuedraggable";
 import Toast from "toasters";
+import ws from "@/ws";
 
 import Modal from "../Modal.vue";
 
@@ -391,12 +392,23 @@ export default {
 		}
 		/* eslint-enable */
 	},
+	mounted() {
+		ws.onConnect(this.init);
+
+		this.socket.on("event:admin.song.updated", res => {
+			this.updateTrackSong(res.data.song);
+		});
+	},
 	beforeUnmount() {
 		this.selectDiscogsAlbum({});
 		this.setPlaylistSongs([]);
 		this.showDiscogsTab("search");
+		this.socket.dispatch("apis.leaveRoom", "import-album");
 	},
 	methods: {
+		init() {
+			this.socket.dispatch("apis.joinRoom", "import-album");
+		},
 		editSongs() {
 			this.updateEditingSongs(true);
 			this.songsToEdit = [];
@@ -630,6 +642,13 @@ export default {
 			this.discogs.apiResults = [];
 			this.discogs.disableLoadMore = false;
 		},
+		updateTrackSong(updatedSong) {
+			this.updatePlaylistSong(updatedSong);
+			this.trackSongs.forEach((song, index) => {
+				if (song[0]._id === updatedSong._id)
+					this.trackSongs[index][0] = updatedSong;
+			});
+		},
 		...mapActions({
 			showDiscogsTab(dispatch, payload) {
 				if (this.$refs[`discogs-${payload}-tab`])
@@ -646,7 +665,8 @@ export default {
 			"selectDiscogsAlbum",
 			"updateEditingSongs",
 			"resetPlaylistSongs",
-			"togglePrefillDiscogs"
+			"togglePrefillDiscogs",
+			"updatePlaylistSong"
 		]),
 		...mapActions("modals/editSong", ["editSong"]),
 		...mapActions("modalVisibility", ["closeModal", "openModal"])
@@ -697,13 +717,6 @@ export default {
 		margin-left: 24px;
 	}
 
-	// .import-album-modal-body {
-	// 	display: flex;
-	// 	flex-direction: row;
-	// 	flex-wrap: wrap;
-	// 	justify-content: space-evenly;
-	// }
-
 	.modal-card {
 		width: 100%;
 		height: 100%;
@@ -749,7 +762,6 @@ export default {
 .tabs-container {
 	max-width: 376px;
 	height: 100%;
-	// overflow: auto;
 	display: flex;
 	flex-direction: column;
 	flex-grow: 1;
@@ -792,14 +804,8 @@ export default {
 	--primary-color: var(--purple);
 
 	.search-discogs-album {
-		// width: 376px;
 		background-color: var(--light-grey);
 		border: 1px rgba(143, 40, 140, 0.75) solid;
-		// border: 1px rgba(163, 224, 255, 0.75) solid;
-		// border-radius: 5px;
-		// padding: 16px;
-		// overflow: auto;
-		// height: 100%;
 
 		> label {
 			margin-top: 12px;
@@ -926,14 +932,8 @@ export default {
 	}
 
 	.discogs-album {
-		// width: 376px;
 		background-color: var(--light-grey);
 		border: 1px rgba(143, 40, 140, 0.75) solid;
-		// border: 1px rgba(163, 224, 255, 0.75) solid;
-		// border-radius: 5px;
-		// padding: 16px;
-		// overflow: auto;
-		// height: 100%;
 
 		.top-container {
 			display: flex;

@@ -35,7 +35,9 @@ export default {
 		updateEditingSongs: ({ commit }, editingSongs) =>
 			commit("updateEditingSongs", editingSongs),
 		resetPlaylistSongs: ({ commit }) => commit("resetPlaylistSongs"),
-		togglePrefillDiscogs: ({ commit }) => commit("togglePrefillDiscogs")
+		togglePrefillDiscogs: ({ commit }) => commit("togglePrefillDiscogs"),
+		updatePlaylistSong: ({ commit }, updatedSong) =>
+			commit("updatePlaylistSong", updatedSong)
 	},
 	mutations: {
 		showDiscogsTab(state, tab) {
@@ -72,6 +74,12 @@ export default {
 		},
 		togglePrefillDiscogs(state) {
 			state.prefillDiscogs = !state.prefillDiscogs;
+		},
+		updatePlaylistSong(state, updatedSong) {
+			state.playlistSongs.forEach((song, index) => {
+				if (song._id === updatedSong._id)
+					state.playlistSongs[index] = updatedSong;
+			});
 		}
 	}
 };

@@ -503,6 +503,10 @@ class _SongsModule extends CoreClass {
 				],
 				(err, song) => {
 					if (err && err !== true) return reject(new Error(err));
+					CacheModule.runJob("PUB", {
+						channel: "song.updated",
+						value: song._id
+					});
 					return resolve(song);
 				}
 			)
