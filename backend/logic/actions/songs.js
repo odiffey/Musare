@@ -135,6 +135,22 @@ CacheModule.runJob("SUB", {
 });
 
 CacheModule.runJob("SUB", {
+	channel: "song.updated",
+	cb: async songId => {
+		const songModel = await DBModule.runJob("GET_MODEL", {
+			modelName: "song"
+		});
+
+		songModel.findOne({ _id: songId }, (err, song) => {
+			WSModule.runJob("EMIT_TO_ROOM", {
+				room: "import-album",
+				args: ["event:admin.song.updated", { data: { song } }]
+			});
+		});
+	}
+});
+
+CacheModule.runJob("SUB", {
 	channel: "song.like",
 	cb: data => {
 		WSModule.runJob("EMIT_TO_ROOM", {

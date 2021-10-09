@@ -8,7 +8,7 @@ WORKDIR /opt
 ADD package.json /opt/package.json
 ADD package-lock.json /opt/package-lock.json
 
-RUN npm install -g webpack@5.44.0 webpack-cli@4.7.2
+RUN npm install -g webpack@5.38.0 webpack-cli@4.8.0
 
 RUN npm install
 

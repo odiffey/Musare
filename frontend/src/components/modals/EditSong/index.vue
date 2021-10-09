@@ -901,16 +901,18 @@ export default {
 				this.song._id,
 				res => {
 					if (res.status === "success") {
-						const { song } = res.data;
-						// this.song = { ...song };
-						// if (this.song.discogs === undefined)
-						// 	this.song.discogs = null;
+						let { song } = res.data;
+
+						if (this.song.prefill)
+							song = Object.assign(song, this.song.prefill);
+
 						if (this.song.discogs)
-							this.editSong({
+							song = {
 								...song,
 								discogs: this.song.discogs
-							});
-						else this.editSong(song);
+							};
+
+						this.editSong(song);
 
 						this.songDataLoaded = true;
 
@@ -918,8 +920,6 @@ export default {
 							"apis.joinRoom",
 							`edit-song.${this.song._id}`
 						);
-
-						// this.edit(res.data.song);
 
 						this.interval = setInterval(() => {
 							if (
