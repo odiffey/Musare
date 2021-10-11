@@ -207,8 +207,6 @@ import { mapState, mapGetters, mapActions } from "vuex";
 import Toast from "toasters";
 import ReportInfoItem from "@/components/ReportInfoItem.vue";
 
-import ReportInfoItem from "@/components/ReportInfoItem.vue";
-
 export default {
 	components: { ReportInfoItem },
 	data() {
