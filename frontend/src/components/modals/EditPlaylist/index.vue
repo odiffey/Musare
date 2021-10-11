@@ -510,7 +510,7 @@ export default {
 		},
 		async downloadPlaylist() {
 			if (this.apiDomain === "")
-				this.apiDomain = await lofig.get("apiDomain");
+				this.apiDomain = await lofig.get("backend.apiDomain");
 
 			fetch(
 				`${this.apiDomain}/export/privatePlaylist/${this.playlist._id}`,

@@ -92,6 +92,8 @@ import Toast from "toasters";
 import ReportInfoItem from "@/components/ReportInfoItem.vue";
 import ws from "@/ws";
 
+import ReportInfoItem from "@/components/ReportInfoItem.vue";
+
 export default {
 	components: {
 		ViewReport: defineAsyncComponent(() =>

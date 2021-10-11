@@ -387,7 +387,7 @@ export default {
 	},
 	watch: {
 		/* eslint-disable */
-		"modals.editSong": function(value) {
+		"modals.editSong": function (value) {
 			if (!value) this.editNextSong();
 		}
 		/* eslint-enable */
