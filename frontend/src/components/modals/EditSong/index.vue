@@ -422,10 +422,22 @@
 							>
 								YouTube
 							</button>
+							<button
+								class="button is-default"
+								:class="{ selected: tab === 'musare-songs' }"
+								ref="musare-songs-tab"
+								@click="showTab('musare-songs')"
+							>
+								Songs
+							</button>
 						</div>
 						<discogs class="tab" v-show="tab === 'discogs'" />
 						<reports class="tab" v-show="tab === 'reports'" />
 						<youtube class="tab" v-show="tab === 'youtube'" />
+						<musare-songs
+							class="tab"
+							v-show="tab === 'musare-songs'"
+						/>
 					</div>
 				</div>
 			</template>
@@ -548,6 +560,7 @@ import SaveButton from "../../SaveButton.vue";
 import Discogs from "./Tabs/Discogs.vue";
 import Reports from "./Tabs/Reports.vue";
 import Youtube from "./Tabs/Youtube.vue";
+import MusareSongs from "./Tabs/Songs.vue";
 
 export default {
 	components: {
@@ -557,7 +570,8 @@ export default {
 		Confirm,
 		Discogs,
 		Reports,
-		Youtube
+		Youtube,
+		MusareSongs
 	},
 	props: {
 		youtubeId: { type: String, default: null },
