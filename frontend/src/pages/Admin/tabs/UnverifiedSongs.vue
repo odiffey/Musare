@@ -335,7 +335,6 @@ export default {
 			);
 		},
 		...mapActions("admin/unverifiedSongs", [
-			// "stopVideo",
 			"resetSongs",
 			"addSong",
 			"removeSong",

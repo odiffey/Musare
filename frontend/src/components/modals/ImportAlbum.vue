@@ -337,7 +337,6 @@ import SongItem from "../SongItem.vue";
 export default {
 	components: { Modal, SongItem, draggable },
 	props: {
-		// songType: { type: String, default: null },
 		sector: { type: String, default: "admin" }
 	},
 	data() {

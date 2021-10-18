@@ -120,7 +120,6 @@ export default {
 				);
 			}
 		}
-		// 	...mapActions("modals/editSong", ["selectDiscogsInfo"])
 	}
 };
 </script>

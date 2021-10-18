@@ -349,15 +349,6 @@ export default {
 				if (this.playlist._id === res.data.playlistId) {
 					// remove song from array of playlists
 					this.removeSong(res.data.youtubeId);
-
-					// // if this song is in search results, mark it available to add to the playlist again
-					// this.search.songs.results.forEach((searchItem, index) => {
-					// 	if (res.data.youtubeId === searchItem.id) {
-					// 		this.search.songs.results[
-					// 			index
-					// 		].isAddedToQueue = false;
-					// 	}
-					// });
 				}
 			},
 			{ modal: "editPlaylist" }
@@ -399,8 +390,6 @@ export default {
 			this.gettingSongs = true;
 			this.socket.dispatch("playlists.getPlaylist", this.editing, res => {
 				if (res.status === "success") {
-					// this.playlist = res.data.playlist;
-					// this.playlist.songs.sort((a, b) => a.position - b.position);
 					this.setPlaylist(res.data.playlist);
 				} else new Toast(res.message);
 				this.gettingSongs = false;
