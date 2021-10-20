@@ -1276,6 +1276,17 @@ class _PlaylistsModule extends CoreClass {
 						)
 							.then(() => next())
 							.catch(next);
+					},
+
+					next => {
+						StationsModule.runJob(
+							"REMOVE_INCLUDED_OR_EXCLUDED_PLAYLIST_FROM_STATIONS",
+							{ playlistId: payload.playlistId },
+							this
+						).then(() => {
+							next();
+						})
+						.catch(err => next(err));
 					}
 				],
 				err => {
