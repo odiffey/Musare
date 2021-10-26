@@ -13,6 +13,7 @@ Musare is an open-source collaborative music listening and catalogue curation ap
 - [Backend Commands](./.wiki/Backend_Commands.md)
 - [Technical Overview](./.wiki/Technical_Overview.md)
 - [Value Formats](./.wiki/Value_Formats.md)
+- [Screenshots](./.wiki/Screenshots.md)
 
 ---
 
