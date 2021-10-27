@@ -213,4 +213,18 @@ export default {
 		}
 	}
 }
+
+@media screen and (max-width: 768px) {
+	.nav .nav-menu .grouped {
+		flex-direction: column;
+		.nav-item {
+			padding: 10px 20px;
+			&:hover,
+			&:focus {
+				border-top: 0;
+				height: unset;
+			}
+		}
+	}
+}
 </style>
