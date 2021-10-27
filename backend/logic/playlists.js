@@ -1283,10 +1283,11 @@ class _PlaylistsModule extends CoreClass {
 							"REMOVE_INCLUDED_OR_EXCLUDED_PLAYLIST_FROM_STATIONS",
 							{ playlistId: payload.playlistId },
 							this
-						).then(() => {
-							next();
-						})
-						.catch(err => next(err));
+						)
+							.then(() => {
+								next();
+							})
+							.catch(err => next(err));
 					}
 				],
 				err => {
