@@ -474,6 +474,17 @@ export default {
 							},
 							{ modal: "manageStation" }
 						);
+
+						this.socket.on(
+							"event:station.deleted",
+							() => {
+								new Toast(
+									`The station you were editing was deleted.`
+								);
+								this.closeModal("manageStation");
+							},
+							{ modal: "manageStation" }
+						);
 					} else {
 						new Toast(`Station with that ID not found`);
 						this.closeModal("manageStation");
@@ -493,9 +504,6 @@ export default {
 		removeStation() {
 			this.socket.dispatch("stations.remove", this.station._id, res => {
 				new Toast(res.message);
-				if (res.status === "success") {
-					this.closeModal("manageStation");
-				}
 			});
 		},
 		resumeStation() {
