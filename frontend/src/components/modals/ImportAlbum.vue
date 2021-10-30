@@ -703,6 +703,11 @@ export default {
 		background-color: var(--dark-grey-2) !important;
 	}
 
+	.api-result .bottom-row img,
+	.discogs-album .bottom-row img {
+		filter: invert(100%);
+	}
+
 	.label,
 	p,
 	strong {
