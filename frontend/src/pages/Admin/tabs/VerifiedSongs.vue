@@ -2,54 +2,79 @@
 	<div>
 		<page-metadata title="Admin | Songs" />
 		<div class="container">
-			<p>
-				<span>Sets loaded: {{ setsLoaded }} / {{ maxSets }}</span>
-				<br />
-				<span>Loaded songs: {{ songs.length }}</span>
-			</p>
-			<input
-				v-model="searchQuery"
-				type="text"
-				class="input"
-				placeholder="Search for Songs"
-			/>
-			<button
-				v-if="!loadAllSongs"
-				class="button is-primary"
-				@click="loadAll()"
-			>
-				Load all
-			</button>
-			<button
-				class="button is-primary"
-				@click="toggleKeyboardShortcutsHelper"
-				@dblclick="resetKeyboardShortcutsHelper"
-			>
-				Keyboard shortcuts helper
-			</button>
-			<button class="button is-primary" @click="openModal('requestSong')">
-				Request song
-			</button>
-			<button class="button is-primary" @click="openModal('importAlbum')">
-				Import album
-			</button>
-			<confirm placement="bottom" @confirm="updateAllSongs()">
+			<div class="button-row">
 				<button
-					class="button is-danger"
-					content="Update all songs"
-					v-tippy
+					v-if="!loadAllSongs"
+					class="button is-primary"
+					@click="loadAll()"
 				>
-					Update all songs
+					Load all sets
 				</button>
-			</confirm>
+				<button
+					class="button is-primary"
+					@click="toggleKeyboardShortcutsHelper"
+					@dblclick="resetKeyboardShortcutsHelper"
+				>
+					Keyboard shortcuts helper
+				</button>
+				<button
+					class="button is-primary"
+					@click="openModal('requestSong')"
+				>
+					Request song
+				</button>
+				<button
+					class="button is-primary"
+					@click="openModal('importAlbum')"
+				>
+					Import album
+				</button>
+				<confirm placement="bottom" @confirm="updateAllSongs()">
+					<button class="button is-danger">Update all songs</button>
+				</confirm>
+			</div>
 			<br />
-			<div>
+			<div class="box">
+				<p @click="toggleSearchBox()">
+					Search
+					<i class="material-icons" v-show="searchBoxShown"
+						>expand_more</i
+					>
+					<i class="material-icons" v-show="!searchBoxShown"
+						>expand_less</i
+					>
+				</p>
+				<input
+					v-model="searchQuery"
+					type="text"
+					class="input"
+					placeholder="Search for Songs"
+					v-show="searchBoxShown"
+				/>
+			</div>
+			<div class="box">
+				<p @click="toggleFilterArtistsBox()">
+					Filter artists<i
+						class="material-icons"
+						v-show="filterArtistBoxShown"
+						>expand_more</i
+					>
+					<i class="material-icons" v-show="!filterArtistBoxShown"
+						>expand_less</i
+					>
+				</p>
 				<input
 					type="text"
+					class="input"
 					placeholder="Filter artist checkboxes"
 					v-model="artistFilterQuery"
+					v-show="filterArtistBoxShown"
 				/>
-				<label v-for="artist in filteredArtists" :key="artist">
+				<label
+					v-for="artist in filteredArtists"
+					:key="artist"
+					v-show="filterArtistBoxShown"
+				>
 					<input
 						type="checkbox"
 						:checked="artistFilterSelected.indexOf(artist) !== -1"
@@ -58,13 +83,29 @@
 					<span>{{ artist }}</span>
 				</label>
 			</div>
-			<div>
+			<div class="box">
+				<p @click="toggleFilterGenresBox()">
+					Filter genres<i
+						class="material-icons"
+						v-show="filterGenreBoxShown"
+						>expand_more</i
+					>
+					<i class="material-icons" v-show="!filterGenreBoxShown"
+						>expand_less</i
+					>
+				</p>
 				<input
 					type="text"
+					class="input"
 					placeholder="Filter genre checkboxes"
 					v-model="genreFilterQuery"
+					v-show="filterGenreBoxShown"
 				/>
-				<label v-for="genre in filteredGenres" :key="genre">
+				<label
+					v-for="genre in filteredGenres"
+					:key="genre"
+					v-show="filterGenreBoxShown"
+				>
 					<input
 						type="checkbox"
 						:checked="genreFilterSelected.indexOf(genre) !== -1"
@@ -73,6 +114,11 @@
 					<span>{{ genre }}</span>
 				</label>
 			</div>
+			<p>
+				<span>Sets loaded: {{ setsLoaded }} / {{ maxSets }}</span>
+				<br />
+				<span>Loaded songs: {{ songs.length }}</span>
+			</p>
 			<br />
 			<table class="table is-striped">
 				<thead>
@@ -283,7 +329,10 @@ export default {
 			editing: {
 				index: 0,
 				song: {}
-			}
+			},
+			searchBoxShown: true,
+			filterArtistBoxShown: false,
+			filterGenreBoxShown: false
 		};
 	},
 	computed: {
@@ -490,6 +539,15 @@ export default {
 					1
 				);
 		},
+		toggleSearchBox() {
+			this.searchBoxShown = !this.searchBoxShown;
+		},
+		toggleFilterArtistsBox() {
+			this.filterArtistBoxShown = !this.filterArtistBoxShown;
+		},
+		toggleFilterGenresBox() {
+			this.filterGenreBoxShown = !this.filterGenreBoxShown;
+		},
 		toggleKeyboardShortcutsHelper() {
 			this.$refs.keyboardShortcutsHelper.toggleBox();
 		},
@@ -527,6 +585,10 @@ export default {
 
 <style lang="scss" scoped>
 .night-mode {
+	.box {
+		background-color: var(--dark-grey-3) !important;
+	}
+
 	.table {
 		color: var(--light-grey-2);
 		background-color: var(--dark-grey-3);
@@ -554,6 +616,39 @@ export default {
 
 body {
 	font-family: "Hind", sans-serif;
+}
+
+.box {
+	background-color: var(--light-grey);
+	border-radius: 5px;
+	padding: 8px 16px;
+
+	p {
+		text-align: center;
+		font-size: 24px;
+		user-select: none;
+		cursor: pointer;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+	}
+
+	input[type="text"] {
+		margin-top: 8px;
+		margin-bottom: 8px;
+	}
+
+	label {
+		margin-right: 8px;
+		display: inline-flex;
+		align-items: center;
+
+		input[type="checkbox"] {
+			margin-right: 2px;
+			height: 16px;
+			width: 16px;
+		}
+	}
 }
 
 .optionsColumn {
