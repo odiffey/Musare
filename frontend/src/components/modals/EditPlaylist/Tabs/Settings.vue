@@ -13,12 +13,12 @@
 					/>
 				</p>
 				<p class="control">
-					<a
+					<button
 						class="button is-info"
 						@click.prevent="renamePlaylist()"
-						href="#"
-						>Rename</a
 					>
+						Rename
+					</button>
 				</p>
 			</div>
 		</div>
@@ -39,12 +39,12 @@
 					</select>
 				</div>
 				<p class="control">
-					<a
+					<button
 						class="button is-info"
 						@click.prevent="updatePrivacy()"
-						href="#"
-						>Update Privacy</a
 					>
+						Update Privacy
+					</button>
 				</p>
 			</div>
 		</div>

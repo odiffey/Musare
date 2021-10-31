@@ -25,7 +25,6 @@
 			<div class="nav-dropdown-items" v-if="playlists.length > 0">
 				<button
 					class="nav-item"
-					href="#"
 					v-for="(playlist, index) in playlists"
 					:key="playlist._id"
 					@click.prevent="toggleSongInPlaylist(index)"
@@ -48,7 +47,9 @@
 					</p>
 				</button>
 			</div>
-			<p v-else>You haven't created any playlists.</p>
+			<p v-else class="no-playlists">
+				You haven't created any playlists.
+			</p>
 
 			<button
 				id="create-playlist"
@@ -177,3 +178,14 @@ export default {
 	}
 };
 </script>
+
+<style lang="scss" scoped>
+.no-playlists {
+	text-align: center;
+	margin-top: 10px;
+}
+
+#create-playlist .material-icons {
+	color: var(--white);
+}
+</style>

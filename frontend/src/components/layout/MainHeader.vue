@@ -45,15 +45,11 @@
 				<router-link class="nav-item" to="/settings"
 					>Settings</router-link
 				>
-				<a class="nav-item" href="#" @click="logout()">Logout</a>
+				<a class="nav-item" @click="logout()">Logout</a>
 			</span>
 			<span v-if="!loggedIn && !hideLoggedOut" class="grouped">
-				<a class="nav-item" href="#" @click="openModal('login')"
-					>Login</a
-				>
-				<a class="nav-item" href="#" @click="openModal('register')"
-					>Register</a
-				>
+				<a class="nav-item" @click="openModal('login')">Login</a>
+				<a class="nav-item" @click="openModal('register')">Register</a>
 			</span>
 		</div>
 	</nav>
@@ -83,7 +79,8 @@ export default {
 			modals: state => state.modalVisibility.modals.header,
 			role: state => state.user.auth.role,
 			loggedIn: state => state.user.auth.loggedIn,
-			username: state => state.user.auth.username
+			username: state => state.user.auth.username,
+			nightmode: state => state.user.preferences.nightmode
 		}),
 		...mapGetters({
 			socket: "websockets/getSocket"
@@ -93,14 +90,7 @@ export default {
 		this.frontendDomain = await lofig.get("frontendDomain");
 		this.siteSettings = await lofig.get("siteSettings");
 	},
-
 	methods: {
-		init() {
-			this.socket.dispatch("users.getPreferences", res => {
-				if (res.status === "success")
-					this.localNightmode = res.data.preferences.nightmode;
-			});
-		},
 		...mapActions("modalVisibility", ["openModal"]),
 		...mapActions("user/auth", ["logout"])
 	}

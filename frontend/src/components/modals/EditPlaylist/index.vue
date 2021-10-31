@@ -214,18 +214,13 @@
 			</div>
 		</template>
 		<template #footer>
-			<a
+			<button
 				class="button is-default"
-				v-if="
-					userId === playlist.createdBy ||
-					isEditable() ||
-					playlist.privacy === 'public'
-				"
+				v-if="isOwner() || isAdmin() || playlist.privacy === 'public'"
 				@click="downloadPlaylist()"
-				href="#"
 			>
 				Download Playlist
-			</a>
+			</button>
 			<div class="right">
 				<confirm
 					v-if="playlist.type === 'station'"
@@ -316,6 +311,7 @@ export default {
 			}
 		},
 		...mapState({
+			loggedIn: state => state.user.auth.loggedIn,
 			userId: state => state.user.auth.userId,
 			userRole: state => state.user.auth.role
 		}),
@@ -521,10 +517,9 @@ export default {
 			if (this.apiDomain === "")
 				this.apiDomain = await lofig.get("backend.apiDomain");
 
-			fetch(
-				`${this.apiDomain}/export/privatePlaylist/${this.playlist._id}`,
-				{ credentials: "include" }
-			)
+			fetch(`${this.apiDomain}/export/playlist/${this.playlist._id}`, {
+				credentials: "include"
+			})
 				.then(res => res.blob())
 				.then(blob => {
 					const url = window.URL.createObjectURL(blob);
@@ -533,7 +528,7 @@ export default {
 					a.style.display = "none";
 					a.href = url;
 
-					a.download = `musare-privateplaylist-${
+					a.download = `musare-playlist-${
 						this.playlist._id
 					}-${new Date().toISOString()}.json`;
 

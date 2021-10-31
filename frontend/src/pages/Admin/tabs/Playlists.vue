@@ -336,10 +336,6 @@ export default {
 	}
 }
 
-body {
-	font-family: "Hind", sans-serif;
-}
-
 td {
 	vertical-align: middle;
 }

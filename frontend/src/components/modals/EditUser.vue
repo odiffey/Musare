@@ -250,7 +250,7 @@ export default {
 
 <style lang="scss" scoped>
 .night-mode .section {
-	background-color: unset !important;
+	background-color: transparent !important;
 }
 
 .section {

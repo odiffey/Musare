@@ -53,29 +53,30 @@
 import Toast from "toasters";
 import { mapState, mapGetters, mapActions } from "vuex";
 
-import ws from "@/ws";
-
 export default {
 	data() {
 		return {
 			siteSettings: {
 				logo: "",
 				sitename: "Musare",
-				github: "#"
+				github: ""
 			},
 			localNightmode: null
 		};
 	},
 	computed: {
 		...mapState({
-			loggedIn: state => state.user.auth.loggedIn
+			loggedIn: state => state.user.auth.loggedIn,
+			nightmode: state => state.user.preferences.nightmode
 		}),
 		...mapGetters({
 			socket: "websockets/getSocket"
 		})
 	},
 	watch: {
-		localNightmode() {
+		localNightmode(newValue, oldValue) {
+			if (oldValue === null) return;
+
 			localStorage.setItem("nightmode", this.localNightmode);
 
 			if (this.loggedIn) {
@@ -89,28 +90,19 @@ export default {
 			}
 
 			this.changeNightmode(this.localNightmode);
+		},
+		nightmode(nightmode) {
+			if (this.localNightmode !== nightmode)
+				this.localNightmode = nightmode;
 		}
 	},
 	async mounted() {
 		this.localNightmode = JSON.parse(localStorage.getItem("nightmode"));
 
-		ws.onConnect(this.init);
-
-		this.socket.on("keep.event:user.preferences.updated", res => {
-			if (res.data.preferences.nightmode !== undefined)
-				this.localNightmode = res.data.preferences.nightmode;
-		});
-
 		this.frontendDomain = await lofig.get("frontendDomain");
 		this.siteSettings = await lofig.get("siteSettings");
 	},
 	methods: {
-		init() {
-			this.socket.dispatch("users.getPreferences", res => {
-				if (res.status === "success")
-					this.localNightmode = res.data.preferences.nightmode;
-			});
-		},
 		...mapActions("user/preferences", ["changeNightmode"])
 	}
 };
