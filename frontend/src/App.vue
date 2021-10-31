@@ -370,7 +370,7 @@ body {
 	background-color: var(--light-grey);
 	color: var(--dark-grey);
 	height: 100%;
-	font-family: "Inter", Helvetica, Arial, sans-serif;
+	font-family: Nunito, Arial, sans-serif;
 }
 
 h1,
@@ -380,12 +380,12 @@ h4,
 h5,
 h6,
 .sidebar-title {
-	font-family: "Inter", Helvetica, Arial, sans-serif;
+	font-family: Nunito, Arial, sans-serif;
 }
 
 .modal-card-title {
 	font-weight: 600;
-	font-family: "Inter", Helvetica, Arial, sans-serif;
+	font-family: Nunito, Arial, sans-serif;
 }
 
 p,
@@ -393,7 +393,7 @@ button,
 input,
 select,
 textarea {
-	font-family: "Inter", Helvetica, Arial, sans-serif;
+	font-family: Nunito, Arial, sans-serif;
 }
 
 #page-title {
@@ -1243,14 +1243,14 @@ h4.section-title {
 }
 
 .news-item {
-	font-family: "Karla";
+	font-family: Nunito, Arial, sans-serif;
 	border-radius: 5px;
 	padding: 20px;
 	border: unset !important;
 	box-shadow: 0 2px 3px rgba(10, 10, 10, 0.1), 0 0 0 1px rgba(10, 10, 10, 0.1);
 
 	* {
-		font-family: Karla, Arial, sans-serif;
+		font-family: Nunito, Arial, sans-serif;
 		font-size: 16px;
 	}
 

@@ -60,7 +60,7 @@ export default {
 		align-items: center;
 		justify-content: center;
 		background-color: #ddd;
-		font-family: "Inter", sans-serif;
+		font-family: Nunito, Arial, sans-serif;
 		font-weight: 400;
 		user-select: none;
 		-webkit-user-select: none;
