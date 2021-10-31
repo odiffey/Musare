@@ -1,21 +1,19 @@
-const config = require('config');
-const mail = require('../index');
+import mail from "../index";
 
 /**
  * Sends a request password reset email
  *
- * @param {String} to - the email address of the recipient
- * @param {String} username - the username of the recipient
- * @param {String} code - the password reset code of the recipient
+ * @param {string} to - the email address of the recipient
+ * @param {string} username - the username of the recipient
+ * @param {string} code - the password reset code of the recipient
  * @param {Function} cb - gets called when an error occurred or when the operation was successful
  */
-module.exports = function(to, username, code, cb) {
-	let data = {
-		from: 'Musare <noreply@musare.com>',
-		to: to,
-		subject: 'Password reset request',
-		html:
-			`
+export default (to, username, code, cb) => {
+	const data = {
+		from: "Musare <noreply@musare.com>",
+		to,
+		subject: "Password reset request",
+		html: `
 				Hello there ${username},
 				<br>
 				<br>
@@ -26,5 +24,7 @@ module.exports = function(to, username, code, cb) {
 			`
 	};
 
-	mail.sendMail(data, cb);
+	mail.runJob("SEND_MAIL", { data })
+		.then(() => cb())
+		.catch(err => cb(err));
 };

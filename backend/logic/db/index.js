@@ -1,55 +1,313 @@
-'use strict';
+import config from "config";
+import mongoose from "mongoose";
+import bluebird from "bluebird";
+import async from "async";
 
-const mongoose = require('mongoose');
+import CoreClass from "../../core";
 
-const bluebird = require('bluebird');
+const REQUIRED_DOCUMENT_VERSIONS = {
+	activity: 2,
+	news: 2,
+	playlist: 4,
+	punishment: 1,
+	queueSong: 1,
+	report: 5,
+	song: 5,
+	station: 6,
+	user: 3
+};
+
+const regex = {
+	azAZ09_: /^[A-Za-z0-9_]+$/,
+	az09_: /^[a-z0-9_]+$/,
+	emailSimple: /^[\x00-\x7F]+@[a-z0-9]+\.[a-z0-9]+(\.[a-z0-9]+)?$/,
+	ascii: /^[\x00-\x7F]+$/,
+	name: /^[\p{L}0-9 .'_-]+$/u,
+	custom: regex => new RegExp(`^[${regex}]+$`)
+};
+
+const isLength = (string, min, max) => !(typeof string !== "string" || string.length < min || string.length > max);
 
 mongoose.Promise = bluebird;
 
-let lib = {
+let DBModule;
 
-	connection: null,
-	schemas: {},
-	models: {},
+class _DBModule extends CoreClass {
+	// eslint-disable-next-line require-jsdoc
+	constructor() {
+		super("db");
 
-	init: (url, cb) => {
+		DBModule = this;
+	}
 
-		lib.connection = mongoose.connect(url).connection;
+	/**
+	 * Initialises the database module
+	 *
+	 * @returns {Promise} - returns promise (reject, resolve)
+	 */
+	initialize() {
+		return new Promise((resolve, reject) => {
+			this.schemas = {};
+			this.models = {};
 
-		lib.connection.on('error', err => {
-			console.error('Database error: ' + err.message)
-			process.exit();
-		});
+			const mongoUrl = config.get("mongo").url;
 
-		lib.connection.once('open', _ => {
+			mongoose
+				.connect(mongoUrl, {
+					useNewUrlParser: true,
+					useUnifiedTopology: true
+				})
+				.then(async () => {
+					this.schemas = {
+						song: {},
+						queueSong: {},
+						station: {},
+						user: {},
+						dataRequest: {},
+						activity: {},
+						playlist: {},
+						news: {},
+						report: {},
+						punishment: {}
+					};
 
-			lib.schemas = {
-				song: new mongoose.Schema(require(`./schemas/song`)),
-				queueSong: new mongoose.Schema(require(`./schemas/queueSong`)),
-				station: new mongoose.Schema(require(`./schemas/station`)),
-				user: new mongoose.Schema(require(`./schemas/user`)),
-				playlist: new mongoose.Schema(require(`./schemas/playlist`)),
-				news: new mongoose.Schema(require(`./schemas/news`)),
-				report: new mongoose.Schema(require(`./schemas/report`))
-			};
+					const importSchema = schemaName =>
+						new Promise(resolve => {
+							import(`./schemas/${schemaName}`).then(schema => {
+								this.schemas[schemaName] = new mongoose.Schema(schema.default);
+								return resolve();
+							});
+						});
 
-			lib.schemas.station.path('_id').validate((id) => {
-				return /^[a-z]+$/.test(id);
-			}, 'The id can only have the letters a-z.');
+					await importSchema("song");
+					await importSchema("queueSong");
+					await importSchema("station");
+					await importSchema("user");
+					await importSchema("dataRequest");
+					await importSchema("activity");
+					await importSchema("playlist");
+					await importSchema("news");
+					await importSchema("report");
+					await importSchema("punishment");
 
-			lib.models = {
-				song: mongoose.model('song', lib.schemas.song),
-				queueSong: mongoose.model('queueSong', lib.schemas.queueSong),
-				station: mongoose.model('station', lib.schemas.station),
-				user: mongoose.model('user', lib.schemas.user),
-				playlist: mongoose.model('playlist', lib.schemas.playlist),
-				news: mongoose.model('news', lib.schemas.news),
-				report: mongoose.model('report', lib.schemas.report)
-			};
+					this.models = {
+						song: mongoose.model("song", this.schemas.song),
+						queueSong: mongoose.model("queueSong", this.schemas.queueSong),
+						station: mongoose.model("station", this.schemas.station),
+						user: mongoose.model("user", this.schemas.user),
+						dataRequest: mongoose.model("dataRequest", this.schemas.dataRequest),
+						activity: mongoose.model("activity", this.schemas.activity),
+						playlist: mongoose.model("playlist", this.schemas.playlist),
+						news: mongoose.model("news", this.schemas.news),
+						report: mongoose.model("report", this.schemas.report),
+						punishment: mongoose.model("punishment", this.schemas.punishment)
+					};
 
-			cb();
+					mongoose.connection.on("error", err => {
+						this.log("ERROR", err);
+					});
+
+					mongoose.connection.on("disconnected", () => {
+						this.log("ERROR", "Disconnected, going to try to reconnect...");
+						this.setStatus("RECONNECTING");
+					});
+
+					mongoose.connection.on("reconnected", () => {
+						this.log("INFO", "Reconnected.");
+						this.setStatus("READY");
+					});
+
+					mongoose.connection.on("reconnectFailed", () => {
+						this.log("INFO", "Reconnect failed, stopping reconnecting.");
+						this.setStatus("FAILED");
+					});
+
+					// User
+					this.schemas.user
+						.path("username")
+						.validate(
+							username =>
+								isLength(username, 2, 32) &&
+								regex.custom("a-zA-Z0-9_-").test(username) &&
+								username.replaceAll(/[_]/g, "").length > 0,
+							"Invalid username."
+						);
+
+					this.schemas.user.path("email.address").validate(email => {
+						if (!isLength(email, 3, 254)) return false;
+						if (email.indexOf("@") !== email.lastIndexOf("@")) return false;
+						return regex.emailSimple.test(email) && regex.ascii.test(email);
+					}, "Invalid email.");
+
+					this.schemas.user
+						.path("name")
+						.validate(
+							name =>
+								isLength(name, 1, 64) &&
+								regex.name.test(name) &&
+								name.replaceAll(/[ .'_-]/g, "").length > 0,
+							"Invalid name."
+						);
+
+					// Station
+					this.schemas.station
+						.path("name")
+						.validate(id => isLength(id, 2, 16) && regex.az09_.test(id), "Invalid station name.");
+
+					this.schemas.station
+						.path("displayName")
+						.validate(
+							displayName => isLength(displayName, 2, 32) && regex.ascii.test(displayName),
+							"Invalid display name."
+						);
+
+					this.schemas.station.path("description").validate(description => {
+						if (!isLength(description, 2, 200)) return false;
+						const characters = description.split("");
+						return characters.filter(character => character.charCodeAt(0) === 21328).length === 0;
+					}, "Invalid display name.");
+
+					this.schemas.station.path("owner").validate({
+						validator: owner =>
+							new Promise((resolve, reject) => {
+								this.models.station.countDocuments({ owner }, (err, c) => {
+									if (err) reject(new Error("A mongo error happened."));
+									else if (c >= 25) reject(new Error("User already has 25 stations."));
+									else resolve();
+								});
+							}),
+						message: "User already has 25 stations."
+					});
+
+					// Song
+					const songTitle = title => isLength(title, 1, 100);
+					this.schemas.song.path("title").validate(songTitle, "Invalid title.");
+
+					this.schemas.song.path("artists").validate(artists => artists.length <= 10, "Invalid artists.");
+
+					const songArtists = artists =>
+						artists.filter(artist => isLength(artist, 1, 64) && artist !== "NONE").length ===
+						artists.length;
+					this.schemas.song.path("artists").validate(songArtists, "Invalid artists.");
+
+					const songGenres = genres => {
+						if (genres.length > 16) return false;
+						return (
+							genres.filter(genre => isLength(genre, 1, 32) && regex.ascii.test(genre)).length ===
+							genres.length
+						);
+					};
+					this.schemas.song.path("genres").validate(songGenres, "Invalid genres.");
+
+					const songThumbnail = thumbnail => {
+						if (!isLength(thumbnail, 1, 256)) return false;
+						if (config.get("cookie.secure") === true) return thumbnail.startsWith("https://");
+						return thumbnail.startsWith("http://") || thumbnail.startsWith("https://");
+					};
+					this.schemas.song.path("thumbnail").validate(songThumbnail, "Invalid thumbnail.");
+
+					// Playlist
+					this.schemas.playlist
+						.path("displayName")
+						.validate(displayName => isLength(displayName, 1, 96), "Invalid display name.");
+
+					this.schemas.playlist.path("createdBy").validate(createdBy => {
+						this.models.playlist.countDocuments({ createdBy }, (err, c) => !(err || c >= 100));
+					}, "Max 100 playlists per user.");
+
+					this.schemas.playlist
+						.path("songs")
+						.validate(songs => songs.length <= 10000, "Max 10000 songs per playlist.");
+
+					// this.schemas.playlist.path("songs").validate(songs => {
+					// 	if (songs.length === 0) return true;
+					// 	return songs[0].duration <= 10800;
+					// }, "Max 3 hours per song.");
+
+					this.schemas.playlist.index({ createdFor: 1, type: 1 }, { unique: true });
+
+					if (config.get("skipDbDocumentsVersionCheck")) resolve();
+					else {
+						this.runJob("CHECK_DOCUMENT_VERSIONS", {}, null, -1)
+							.then(() => {
+								resolve();
+							})
+							.catch(err => {
+								reject(err);
+							});
+					}
+				})
+				.catch(err => {
+					this.log("ERROR", err);
+					reject(err);
+				});
 		});
 	}
-};
 
-module.exports = lib;
+	/**
+	 * Checks if all documents have the correct document version
+	 *
+	 * @returns {Promise} - returns promise (reject, resolve)
+	 */
+	CHECK_DOCUMENT_VERSIONS() {
+		return new Promise((resolve, reject) => {
+			async.each(
+				Object.keys(REQUIRED_DOCUMENT_VERSIONS),
+				(modelName, next) => {
+					const model = DBModule.models[modelName];
+					const requiredDocumentVersion = REQUIRED_DOCUMENT_VERSIONS[modelName];
+					model.countDocuments({ documentVersion: { $ne: requiredDocumentVersion } }, (err, count) => {
+						if (err) next(err);
+						else if (count > 0)
+							next(
+								`Collection "${modelName}" has ${count} documents with a wrong document version. Run migration.`
+							);
+						else next();
+					});
+				},
+				err => {
+					if (err) reject(new Error(err));
+					else resolve();
+				}
+			);
+		});
+	}
+
+	/**
+	 * Returns a database model
+	 *
+	 * @param {object} payload - object containing the payload
+	 * @param {object} payload.modelName - name of the model to get
+	 * @returns {Promise} - returns promise (reject, resolve)
+	 */
+	GET_MODEL(payload) {
+		return new Promise(resolve => {
+			resolve(DBModule.models[payload.modelName]);
+		});
+	}
+
+	/**
+	 * Returns a database schema
+	 *
+	 * @param {object} payload - object containing the payload
+	 * @param {object} payload.schemaName - name of the schema to get
+	 * @returns {Promise} - returns promise (reject, resolve)
+	 */
+	GET_SCHEMA(payload) {
+		return new Promise(resolve => {
+			resolve(DBModule.schemas[payload.schemaName]);
+		});
+	}
+
+	/**
+	 * Checks if a password to be stored in the database has a valid length
+	 *
+	 * @param {object} password - the password itself
+	 * @returns {Promise} - returns promise (reject, resolve)
+	 */
+	passwordValid(password) {
+		return isLength(password, 6, 200);
+	}
+}
+
+export default new _DBModule();

@@ -1,11 +1,17 @@
-module.exports = {
-	_id: { type: String, required: true, index: true, unique: true, min: 12, max: 12 },
+import mongoose from "mongoose";
+
+export default {
 	username: { type: String, required: true },
-	role: { type: String, default: 'default', required: true },
+	role: { type: String, default: "default", required: true },
 	email: {
 		verified: { type: Boolean, default: false, required: true },
 		verificationToken: String,
 		address: String
+	},
+	avatar: {
+		type: { type: String, enum: ["gravatar", "initials"], required: true },
+		url: { type: String, required: false },
+		color: { type: String, enum: ["blue", "orange", "green", "purple", "teal"], required: false }
 	},
 	services: {
 		password: {
@@ -13,22 +19,34 @@ module.exports = {
 			reset: {
 				code: { type: String, min: 8, max: 8 },
 				expires: { type: Date }
+			},
+			set: {
+				code: { type: String, min: 8, max: 8 },
+				expires: { type: Date }
 			}
 		},
 		github: {
 			id: Number,
+			access_token: String
 		}
-	},
-	ban: {
-		banned: { type: Boolean, default: false, required: true },
-		reason: String,
-		bannedAt: Date,
-		bannedUntil: Date
 	},
 	statistics: {
 		songsRequested: { type: Number, default: 0, required: true }
 	},
-	liked: [{ type: String }],
-	disliked: [{ type: String }],
-	createdAt: { type: Date, default: Date.now() }
+	likedSongsPlaylist: { type: mongoose.Schema.Types.ObjectId },
+	dislikedSongsPlaylist: { type: mongoose.Schema.Types.ObjectId },
+	favoriteStations: [{ type: String }],
+	name: { type: String, required: true },
+	location: { type: String, default: "" },
+	bio: { type: String, default: "" },
+	createdAt: { type: Date, default: Date.now },
+	preferences: {
+		orderOfPlaylists: [{ type: mongoose.Schema.Types.ObjectId }],
+		nightmode: { type: Boolean, default: false, required: true },
+		autoSkipDisliked: { type: Boolean, default: true, required: true },
+		activityLogPublic: { type: Boolean, default: false, required: true },
+		anonymousSongRequests: { type: Boolean, default: false, required: true },
+		activityWatch: { type: Boolean, default: false, required: true }
+	},
+	documentVersion: { type: Number, default: 3, required: true }
 };

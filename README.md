@@ -1,136 +1,72 @@
-# MusareNode
-This is a rewrite of the original [Musare](https://github.com/Musare/Musare)
-in NodeJS, Express, SocketIO and VueJS. Everything is ran in it's own docker container.
+![Musare](frontend/dist/assets/blue_wordmark.png)
 
-### Our Stack
+# Musare
 
-   * NodeJS
-   * MongoDB
-   * Redis
-   * Nginx
-   * VueJS
+Musare is an open-source collaborative music listening and catalogue curation application. Currently supporting YouTube based content.
 
-### Frontend
-The frontend is a [vue-cli](https://github.com/vuejs/vue-cli) generated,
-[vue-loader](https://github.com/vuejs/vue-loader) single page app, that's
-served over Nginx. The Nginx server not only serves the frontend, but
-also serves as a load balancer for requests going to the backend.
+---
 
-### Backend
-The backend is a scalable NodeJS / Redis / MongoDB app. Each backend
-server handles a group of SocketIO connections. User sessions are stored
-in a central Redis server. All data is stored in a central MongoDB server.
-The Redis and MongoDB servers are replicated to several secondary nodes,
-which can become the primary node if the current primary node goes down.
+## Documentation
+- [Installation](./.wiki/Installation.md)
+- [Configuration](./.wiki/Configuration.md)
+- [Utility Script](./.wiki/Utility_Script.md)
+- [Backend Commands](./.wiki/Backend_Commands.md)
+- [Technical Overview](./.wiki/Technical_Overview.md)
+- [Value Formats](./.wiki/Value_Formats.md)
 
-## Requirements
- * [Docker](https://www.docker.com/)
+---
 
-## Getting Started
-Once you've installed the required tools:
+## Features
+- **Playlists**
+    - User created playlists
+    - Automatically generated playlists for genres
+    - Privacy configuration
+    - Liked and Disliked songs playlists per user
+    - Bulk import songs from YouTube playlist
+    - Add songs from verified catalogue or YouTube
+    - Ability to download in JSON format
+- **Stations**
+    - Playlist mode to listen to selected playlists
+    - Party mode to allow other users to add songs to queue
+    - Ability to blacklist playlists to prevent songs within from playing
+    - Themes
+    - Privacy configuration
+    - Favoriting
+    - Official stations controlled by admins (playlist mode only)
+    - User created and controlled stations
+    - Pause playback just in local session
+    - Station-wide pausing by admins or owners
+    - Vote to skip songs
+    - Force skipping song by admins or owners
+    - Add songs to queue from verified catalogue or YouTube (party mode only)
+- **Song Management**
+    - Verify songs to allow them to be searched for and played in official stations
+    - Hide songs to remove from unverified catalogue
+    - Import Album (WIP) to import songs in bulk
+    - Discogs integration to import metadata
+    - Ability for users to report issues with songs and admins to resolve
+    - Configurable skip duration and song duration to cut intros and outros
+    - Request songs from YouTube in official stations or admin area
+    - Any song added to playlists or stations will be automatically requested
+- **Users**
+    - Activity logs
+    - Profile page showing public playlists and activity logs
+    - Text or gravatar profile pictures
+    - Email or Github login/registration
+    - Preferences to tailor site usage
+    - Password reset
+    - Data deletion management
+    - ActivityWatch integration
+- **Punishments**
+    - Ban users
+    - Ban IPs
+- **News**
+    - Admins can add/edit/remove news items
+    - Markdown editor
+- **Dark Mode**
 
-1. `git clone https://github.com/MusareNode/MusareNode.git`
+---
 
-2. `cd MusareNode`
+## Contact
 
-3. `cp backend/config/template.json backend/config/default.json`
-
-   > The `secret` key can be whatever. It's used by express's session module.
-   The `apis.youtube.key` value can be obtained by setting up a
-   [YouTube API Key](https://developers.google.com/youtube/v3/getting-started).
-  
-4. Build the backend and frontend Docker images
-
-   `docker-compose build`
-
-5. Start the databases and tools in the background, as we usually don't need to monitor these for errors
-
-   `docker-compose up -d mongo mongoclient redis`
-
-6. Start the backend and frontend in the foreground, so we can watch for errors during development
-
-   `docker-compose up backend frontend`
-
-7. You should now be able to begin development! The backend is auto reloaded when
-   you make changes and the frontend is auto compiled and live reloaded by webpack
-   when you make changes. You should be able to access Musare in your local browser
-   at `http://<docker-machine-ip>:8080/` where `<docker-machine-ip>` can be found below:
-
-   * Docker for Windows / Mac: This is just `localhost`
-   
-   * Docker ToolBox: The output of `docker-machine ip default`
-   
-## Extra
-
-Below is a list of helpful tips / solutions we've collected while developing MusareNode.
-
-### Mounting a non-standard directory in Docker Toolbox on Windows
-
-Docker Toolbox usually only gives VirtualBox access to `C:/Users` of your
-local machine. So if your code is located elsewere on your machine,
-you'll need to tell Docker Toolbox how to find it. You can use variations
-of the following commands to give Docker Toolbox access to those files.
-
-1. First lets ensure the machine isn't running
-
-   `docker-machine stop default`
-
-1. Next we'll want to tell the machine about the folder we want to share.
-
-   `"C:\Program Files\Oracle\VirtualBox\VBoxManage.exe" sharedfolder add default --name "d/Projects/MusareNode" --hostpath "D:\Projects\MusareNode" --automount`
-
-2. Now start the machine back up and ssh into it
-
-   `docker-machine start default && docker-machine ssh default`
-   
-3. Tell boot2docker to mount our volume at startup, by appending to its startup script
-	```bash
-	sudo tee -a /mnt/sda1/var/lib/boot2docker/profile >/dev/null <<EOF
-
-	mkdir -p /d/Projects/MusareNode
-	mount -t vboxsf -o uid=1000,gid=50 d/Projects/MusareNode /d/Projects/MusareNode
-	EOF
-	```
-
-4. Restart the docker machine so that it uses the new shared folder
-
-   `docker-machine restart default`
-   
-5. You now should be good to go!
-
-### Fixing the "couldn't connect to docker daemon" error
-
-Some people have had issues while trying to execute the `docker-compose` command.
-To fix this, you will have to run `docker-machine env default`.
-This command will print various variables.
-At the bottom, it will say something similar to `@FOR /f "tokens=*" %i IN ('docker-machine env default') DO @%i`.
-Run this command in your shell. You will have to do this command for every shell you want to run `docker-compose` in (every session).
-
-### Running Musare locally without using Docker
-
-1. Install [Redis](http://redis.io/download) and [MongoDB](https://www.mongodb.com/download-center#community)
-
-2. Install nodemon globally
-
-   `npm install nodemon -g`
-
-3. Install webpack globally
-
-   `npm install webpack -g`
-
-4. Install node-gyp globally (first check out https://github.com/nodejs/node-gyp#installation)
-
-   `npm install node-gyp -g`.
-
-5. In both `frontend` and `backend` folders, do `npm install`.
-
-6. `nodemon backend/index.js`
-
-### Calling Toasts
-
-You can call Toasts using our custom package, [`vue-roaster`](https://github.com/atjonathan/vue-roaster), using the following code:
-
-```js
-import { Toast } from 'vue-roaster';
-Toast.methods.addToast('', 0);
-```
+Get in touch with us via email at [core@musare.com](mailto:core@musare.com).

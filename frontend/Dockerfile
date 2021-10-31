@@ -1,18 +1,20 @@
-FROM node
+FROM node:14
 
 RUN apt-get update
 RUN apt-get install nginx -y
 
-RUN npm install -g webpack
-
 RUN mkdir -p /opt
 WORKDIR /opt
 ADD package.json /opt/package.json
+ADD package-lock.json /opt/package-lock.json
+
+RUN npm install -g webpack@5.58.1 webpack-cli@4.9.0
 
 RUN npm install
 
 RUN mkdir -p /run/nginx
 
-EXPOSE 80
+COPY bootstrap.sh /opt/
+RUN chmod u+x /opt/bootstrap.sh
 
-CMD nginx -c /opt/app/nginx.conf; cd /opt/app; npm run development-watch
+CMD bash /opt/bootstrap.sh

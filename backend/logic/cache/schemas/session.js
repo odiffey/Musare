@@ -1,9 +1,6 @@
-'use strict';
-
-module.exports = (sessionId, userId) => {
-	return {
-		sessionId: sessionId,
-		userId: userId,
-		created: Date.now()
-	};
-};
+export default (sessionId, userId) => ({
+	sessionId,
+	userId,
+	refreshDate: Date.now(),
+	created: Date.now()
+});

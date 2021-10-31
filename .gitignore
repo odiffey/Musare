@@ -2,21 +2,36 @@ Thumbs.db
 .DS_Store
 *.swp
 .idea/
+.vscode/
 .vagrant/
 
+.env
 startRedis.cmd
 startMongo.cmd
 .database
-dump.rdb
-npm-debug.log
+.db
+.redis
+*.rdb
+backups/
 
-# Back End
+npm-debug.log
+lerna-debug.log
+
+# Backend
 backend/node_modules/
 backend/config/default.json
 
-# Front End
+# Frontend
+frontend/bundle-stats.json
+frontend/bundle-report.html
 frontend/node_modules/
-frontend/build/bundle.js
-frontend/build/config/default.json
+frontend/dist/build/
+frontend/dist/index.html
+frontend/dist/config/default.json
 
 npm
+node_modules
+package-lock.json
+
+# Logs
+log/

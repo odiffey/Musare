@@ -1,12 +1,25 @@
-'use strict';
+import apis from "./apis";
+import songs from "./songs";
+import stations from "./stations";
+import playlists from "./playlists";
+import users from "./users";
+import dataRequests from "./dataRequests";
+import activities from "./activities";
+import reports from "./reports";
+import news from "./news";
+import punishments from "./punishments";
+import utils from "./utils";
 
-module.exports = {
-	apis: require('./apis'),
-	songs: require('./songs'),
-	queueSongs: require('./queueSongs'),
-	stations: require('./stations'),
-	playlists: require('./playlists'),
-	users: require('./users'),
-	reports: require('./reports'),
-	news: require('./news')
+export default {
+	apis,
+	songs,
+	stations,
+	playlists,
+	users,
+	dataRequests,
+	activities,
+	reports,
+	news,
+	punishments,
+	utils
 };

@@ -1,15 +1,12 @@
-FROM node
-
-RUN apt-get update
+FROM node:15
 
 RUN npm install -g nodemon
 
 RUN mkdir -p /opt
 WORKDIR /opt
 ADD package.json /opt/package.json
+ADD package-lock.json /opt/package-lock.json
 
 RUN npm install
 
-EXPOSE 80
-
-CMD npm run development
+CMD npm run docker:dev
