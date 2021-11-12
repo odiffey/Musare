@@ -1,7 +1,7 @@
 <template>
 	<footer class="footer">
 		<div class="container">
-			<div class="footer-content has-text-centered">
+			<div class="footer-content">
 				<div id="footer-copyright">
 					<p>© Copyright {{ siteSettings.sitename }} 2015 - 2021</p>
 				</div>
@@ -130,10 +130,15 @@ export default {
 	height: 200px;
 	font-size: 16px;
 
+	.container {
+		position: relative;
+	}
+
 	.footer-content {
 		display: flex;
 		align-items: center;
 		flex-direction: column;
+		text-align: center;
 
 		& > * {
 			margin: 5px 0;
@@ -163,6 +168,7 @@ export default {
 
 		img {
 			max-height: 38px;
+			max-width: 100%;
 			color: var(--primary-color);
 			user-select: none;
 		}

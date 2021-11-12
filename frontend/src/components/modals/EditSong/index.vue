@@ -1,6 +1,6 @@
 <template>
 	<div>
-		<modal title="Edit Song" class="song-modal">
+		<modal title="Edit Song" class="song-modal" :wide="true" :split="true">
 			<template #body>
 				<div class="left-section">
 					<div class="top-section">
@@ -1612,7 +1612,7 @@ export default {
 
 	.autosuggest-item {
 		background-color: var(--dark-grey) !important;
-		color: white !important;
+		color: var(--white) !important;
 		border-color: var(--dark-grey) !important;
 	}
 
@@ -1627,69 +1627,8 @@ export default {
 	}
 }
 
-.song-modal {
-	&::v-deep {
-		.modal-card {
-			width: 1300px;
-			height: 100%;
-
-			.modal-card-body {
-				display: flex;
-				column-gap: 16px;
-				row-gap: 16px;
-
-				@media screen and (max-width: 1000px) {
-					flex-wrap: wrap;
-				}
-
-				> div {
-					display: flex;
-					flex-grow: 1;
-					height: 100%;
-					overflow: auto;
-				}
-			}
-
-			.modal-card-foot {
-				.right {
-					display: flex;
-					margin-left: auto;
-					margin-right: 0;
-				}
-			}
-		}
-	}
-}
-
-#video-container {
-	position: relative;
-	padding-bottom: 56.25%; /* proportion value to aspect ratio 16:9 (9 / 16 = 0.5625 or 56.25%) */
-	height: 0;
-	overflow: hidden;
-
-	.player-cannot-autoplay {
-		position: relative;
-		width: 100%;
-		height: 100%;
-		bottom: calc(100% + 5px);
-		background-color: var(--primary-color);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-
-		p {
-			color: var(--white);
-			font-size: 26px;
-			text-align: center;
-		}
-	}
-}
-
 .left-section {
-	display: flex;
-	flex-direction: column;
-	flex-grow: 0 !important;
-	height: inherit !important;
+	flex-basis: unset !important;
 
 	@media screen and (max-width: 1245px) {
 		flex-grow: 1 !important;
@@ -2080,10 +2019,8 @@ export default {
 }
 
 .right-section {
-	display: flex;
-	flex-wrap: wrap;
-	flex-basis: 450px;
-	overflow-y: auto;
+	flex-basis: unset !important;
+	flex-grow: 0 !important;
 
 	@media screen and (max-width: 1245px) {
 		height: inherit !important;

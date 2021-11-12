@@ -58,7 +58,6 @@
 								params: { id: element.name }
 							}"
 							:class="{
-								card: true,
 								'station-card': true,
 								'item-draggable': true,
 								isPrivate: element.privacy === 'private',
@@ -68,10 +67,7 @@
 								'--primary-color: var(--' + element.theme + ')'
 							"
 						>
-							<song-thumbnail
-								class="card-image"
-								:song="element.currentSong"
-							/>
+							<song-thumbnail :song="element.currentSong" />
 							<div class="card-content">
 								<div class="media">
 									<div class="media-left displayName">
@@ -238,11 +234,11 @@
 				</div>
 				<a
 					v-if="loggedIn"
-					@click="openModal('createCommunityStation')"
-					class="card station-card createStation"
+					@click="openModal('createStation')"
+					class="station-card createStation"
 				>
-					<div class="card-image">
-						<figure class="image is-square">
+					<div class="thumbnail">
+						<figure class="image">
 							<i class="material-icons">radio</i>
 						</figure>
 					</div>
@@ -262,10 +258,10 @@
 				<a
 					v-else
 					@click="openModal('login')"
-					class="card station-card createStation"
+					class="station-card createStation"
 				>
-					<div class="card-image">
-						<figure class="image is-square">
+					<div class="thumbnail">
+						<figure class="image">
 							<i class="material-icons">radio</i>
 						</figure>
 					</div>
@@ -288,17 +284,14 @@
 						name: 'station',
 						params: { id: station.name }
 					}"
-					class="card station-card"
+					class="station-card"
 					:class="{
 						isPrivate: station.privacy === 'private',
 						isMine: isOwner(station)
 					}"
 					:style="'--primary-color: var(--' + station.theme + ')'"
 				>
-					<song-thumbnail
-						class="card-image"
-						:song="station.currentSong"
-					/>
+					<song-thumbnail :song="station.currentSong" />
 					<div class="card-content">
 						<div class="media">
 							<div class="media-left displayName">
@@ -438,7 +431,7 @@
 			</div>
 			<main-footer />
 		</div>
-		<create-community-station v-if="modals.createCommunityStation" />
+		<create-station v-if="modals.createStation" />
 	</div>
 </template>
 
@@ -460,8 +453,8 @@ export default {
 		MainHeader,
 		MainFooter,
 		SongThumbnail,
-		CreateCommunityStation: defineAsyncComponent(() =>
-			import("@/components/modals/CreateCommunityStation.vue")
+		CreateStation: defineAsyncComponent(() =>
+			import("@/components/modals/CreateStation.vue")
 		),
 		UserIdToUsername,
 		draggable
@@ -476,7 +469,8 @@ export default {
 				logo_white: "",
 				sitename: ""
 			},
-			orderOfFavoriteStations: []
+			orderOfFavoriteStations: [],
+			handledLoginRegisterRedirect: false
 		};
 	},
 	computed: {
@@ -528,6 +522,18 @@ export default {
 	},
 	async mounted() {
 		this.siteSettings = await lofig.get("siteSettings");
+
+		if (
+			!this.loggedIn &&
+			this.$route.redirectedFrom &&
+			(this.$route.redirectedFrom.name === "login" ||
+				this.$route.redirectedFrom.name === "register") &&
+			!this.handledLoginRegisterRedirect
+		) {
+			// Makes sure the login/register modal isn't opened whenever the home page gets remounted due to a code change
+			this.handledLoginRegisterRedirect = true;
+			this.openModal(this.$route.redirectedFrom.name);
+		}
 
 		ws.onConnect(this.init);
 
@@ -804,7 +810,7 @@ html {
 			rgba(34, 34, 34, 0.8) 100%
 		);
 	}
-	.card,
+	.station-card,
 	.card-content,
 	.card-content div {
 		background-color: var(--dark-grey-3);
@@ -815,12 +821,12 @@ html {
 		color: var(--light-grey-2);
 	}
 
-	.card-image i {
+	.thumbnail i {
 		user-select: none;
 		-webkit-user-select: none;
 	}
 
-	.card-image.thumbnail {
+	.thumbnail {
 		background-color: var(--dark-grey-2);
 	}
 
@@ -1031,6 +1037,9 @@ html {
 
 .station-card {
 	display: inline-flex;
+	position: relative;
+	background-color: var(--white);
+	color: var(--dark-grey);
 	flex-direction: row;
 	overflow: hidden;
 	margin: 10px;
@@ -1043,6 +1052,8 @@ html {
 	box-shadow: 0 2px 3px rgba(10, 10, 10, 0.1), 0 0 0 1px rgba(10, 10, 10, 0.1);
 
 	.card-content {
+		display: flex;
+		position: relative;
 		padding: 10px 10px 10px 15px;
 		display: flex;
 		flex-direction: column;
@@ -1108,11 +1119,19 @@ html {
 		}
 	}
 
-	.card-image.thumbnail {
+	.thumbnail {
+		display: flex;
+		position: relative;
 		min-width: 120px;
 		width: 120px;
 		height: 120px;
 		margin: 0;
+
+		.image {
+			display: flex;
+			position: relative;
+			padding-top: 100%;
+		}
 	}
 
 	.bottomBar {
@@ -1148,10 +1167,8 @@ html {
 	}
 
 	&.createStation {
-		height: auto;
-
-		.card-image {
-			.image.is-square {
+		.thumbnail {
+			.image {
 				width: 120px;
 
 				@media screen and (max-width: 330px) {
