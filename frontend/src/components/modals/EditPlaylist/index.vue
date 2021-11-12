@@ -661,26 +661,26 @@ export default {
 	}
 }
 
-.edit-playlist-modal .modal-card-body .custom-modal-body {
+.edit-playlist-modal.view-only .modal-card-body {
+	height: auto !important;
+
+	.left-section {
+		flex-basis: 100%;
+	}
+
+	.right-section {
+		max-height: unset !important;
+	}
+
+	/deep/ .section {
+		max-width: 100% !important;
+	}
+}
+
+.edit-playlist-modal .modal-card-body {
 	display: flex;
 	flex-wrap: wrap;
 	height: 100%;
-
-	&.view-only {
-		height: auto !important;
-
-		.left-section {
-			flex-basis: 100%;
-		}
-
-		.right-section {
-			max-height: unset !important;
-		}
-
-		/deep/ .section {
-			max-width: 100% !important;
-		}
-	}
 
 	.nothing-here-text {
 		display: flex;
@@ -697,7 +697,53 @@ export default {
 		width: 150px;
 	}
 
+	.section {
+		display: flex;
+		flex-direction: column;
+		flex-grow: 1;
+		width: auto;
+		padding: 15px !important;
+		margin: 0 10px;
+	}
+
 	.left-section {
+		.tabs-container {
+			padding: 15px 0 !important;
+			margin: 0 10px;
+
+			.tab-selection {
+				display: flex;
+				overflow-x: auto;
+
+				.button {
+					border-radius: 5px 5px 0 0;
+					border: 0;
+					text-transform: uppercase;
+					font-size: 14px;
+					color: var(--dark-grey-3);
+					background-color: var(--light-grey-2);
+					flex-grow: 1;
+					height: 32px;
+
+					&:not(:first-of-type) {
+						margin-left: 5px;
+					}
+				}
+
+				.selected {
+					background-color: var(--primary-color) !important;
+					color: var(--white) !important;
+					font-weight: 600;
+				}
+			}
+			.tab {
+				border: 1px solid var(--light-grey-3);
+				padding: 15px;
+				border-radius: 0 0 5px 5px;
+				margin: 0;
+			}
+		}
+
 		#playlist-info-section {
 			border: 1px solid var(--light-grey-3);
 			border-radius: 3px;
@@ -724,16 +770,6 @@ export default {
 			.scrollable-list:not(:last-of-type) {
 				margin-bottom: 10px;
 			}
-		}
-	}
-}
-
-@media screen and (max-width: 1100px) {
-	.edit-playlist-modal.modal .modal-card-body .custom-modal-body {
-		.left-section,
-		.right-section {
-			flex-basis: 100%;
-			height: auto;
 		}
 	}
 }
