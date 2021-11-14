@@ -783,7 +783,7 @@ export default {
 };
 </script>
 
-<style lang="scss">
+<style lang="scss" scoped>
 * {
 	box-sizing: border-box;
 }
@@ -1044,6 +1044,7 @@ html {
 	overflow: hidden;
 	margin: 10px;
 	cursor: pointer;
+	filter: none;
 	height: 150px;
 	width: calc(100% - 30px);
 	max-width: 400px;

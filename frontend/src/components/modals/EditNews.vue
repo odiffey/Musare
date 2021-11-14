@@ -46,9 +46,8 @@
 							:user-id="createdBy"
 							:alt="createdBy"
 							:link="true"
-						/>
-					</span>
-					<span :title="new Date(createdAt)">
+						/> </span
+					>&nbsp;<span :title="new Date(createdAt)">
 						{{
 							formatDistance(createdAt, new Date(), {
 								addSuffix: true
@@ -96,7 +95,7 @@ export default {
 		marked.use({
 			renderer: {
 				table(header, body) {
-					return `<table class="table is-striped">
+					return `<table class="table">
 					<thead>${header}</thead>
 					<tbody>${body}</tbody>
 					</table>`;
@@ -255,6 +254,17 @@ export default {
 		border-radius: 5px;
 		height: calc(100vh - 280px);
 		width: 100%;
+	}
+}
+
+.edit-news-modal .modal-card .modal-card-foot {
+	.control {
+		margin-bottom: 0 !important;
+	}
+
+	.right {
+		line-height: 36px;
+		column-gap: 0;
 	}
 }
 </style>

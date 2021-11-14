@@ -343,6 +343,11 @@ export default {
 	code {
 		background-color: var(--dark-grey-2) !important;
 	}
+
+	.button.is-dark {
+		background-color: var(--light-grey) !important;
+		color: var(--dark-grey-2) !important;
+	}
 }
 
 /* nunito-200 - latin */
@@ -518,7 +523,7 @@ body {
 	background-color: var(--light-grey);
 	color: var(--dark-grey);
 	height: 100%;
-	line-height: 1.428;
+	line-height: 1.4285714;
 	font-size: 1rem;
 	font-family: Nunito, Arial, sans-serif;
 }
@@ -540,6 +545,7 @@ body {
 .column {
 	display: flex;
 	flex: 1 1 0;
+	flex-direction: column;
 	padding: 10px;
 }
 
@@ -547,11 +553,6 @@ ul {
 	list-style: none;
 	margin: 0;
 	display: block;
-}
-
-ol,
-ul {
-	margin-left: 2em;
 }
 
 h1,
@@ -604,6 +605,12 @@ h6 {
 	font-size: 1rem;
 	line-height: 110%;
 	margin: 0.5rem 0 0.4rem 0;
+}
+
+.content {
+	h4 {
+		line-height: 1.125;
+	}
 }
 
 .thin {
@@ -723,6 +730,12 @@ textarea {
 a {
 	color: var(--primary-color);
 	text-decoration: none;
+	cursor: pointer;
+
+	&:hover,
+	&:focus {
+		filter: brightness(90%);
+	}
 }
 
 table {
@@ -1183,6 +1196,40 @@ button.delete:focus {
 	padding-right: 6px !important;
 }
 
+#tab-selection,
+.tab-selection {
+	overflow-x: auto;
+	.button {
+		white-space: nowrap;
+	}
+}
+
+.table {
+	background-color: var(--white);
+	color: var(--dark-grey);
+	width: 100%;
+	border-collapse: collapse;
+	border-spacing: 0;
+	border-radius: 5px;
+
+	thead th {
+		padding: 5px 10px;
+		text-align: left;
+		font-weight: 600;
+		color: var(--grey-3);
+	}
+
+	tr {
+		&:nth-child(even) {
+			background-color: #fafafa;
+		}
+		&:hover,
+		&:focus {
+			background-color: var(--light-grey);
+		}
+	}
+}
+
 .button {
 	border: 1px solid var(--light-grey-2);
 	background-color: var(--white);
@@ -1197,6 +1244,7 @@ button.delete:focus {
 	justify-content: center;
 	cursor: pointer;
 	user-select: none;
+	white-space: nowrap;
 
 	&:hover,
 	&:focus {
@@ -1231,6 +1279,12 @@ button.delete:focus {
 		background-color: var(--yellow) !important;
 		border-width: 0;
 		color: rgba(0, 0, 0, 0.7);
+	}
+
+	&.is-dark {
+		background-color: var(--dark-grey-2);
+		border-width: 0;
+		color: var(--light-grey);
 	}
 }
 
@@ -1304,6 +1358,28 @@ button.delete:focus {
 
 	&.has-addons {
 		display: flex;
+
+		.button {
+			border-radius: 0;
+			margin-right: -1px;
+
+			&:first-child {
+				border-radius: 3px 0 0 3px;
+			}
+
+			&:last-child {
+				border-radius: 0 3px 3px 0;
+				padding-left: 10px;
+			}
+		}
+
+		.input {
+			margin-right: -1px;
+
+			&:first-child {
+				border-radius: 3px 0 0 3px;
+			}
+		}
 	}
 }
 
@@ -1504,9 +1580,12 @@ h4.section-title {
 }
 
 #forgot-password {
-	display: flex;
 	justify-content: flex-start;
 	margin: 5px 0;
+}
+
+.steps-fade-leave-active {
+	display: none;
 }
 
 .steps-fade-enter-active,
@@ -1565,25 +1644,19 @@ h4.section-title {
 
 /* This class is used for content-box in ResetPassword, but not in RemoveAccount. This is because ResetPassword uses transitions and RemoveAccount does not */
 .content-box-wrapper {
-	position: relative;
+	margin-top: 90px;
 	width: 100%;
 	display: flex;
-	flex-direction: column;
 	align-items: center;
-	min-height: 200px;
-
-	.content-box {
-		position: absolute;
-	}
 }
 
 .content-box {
-	margin-top: 90px;
 	border-radius: 3px;
 	background-color: var(--white);
 	border: 1px solid var(--dark-grey);
 	max-width: 580px;
 	padding: 40px;
+	flex: 1;
 
 	@media screen and (max-width: 300px) {
 		margin-top: 30px;
@@ -1594,7 +1667,6 @@ h4.section-title {
 .content-box-optional-helper {
 	margin-top: 15px;
 	color: var(--primary-color);
-	text-decoration: underline;
 	font-size: 16px;
 
 	a {

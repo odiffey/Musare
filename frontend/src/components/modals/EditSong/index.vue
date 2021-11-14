@@ -1605,10 +1605,31 @@ export default {
 		background: var(--dark-grey) !important;
 		color: var(--white) !important;
 	}
+
+	.left-section {
+		.edit-section {
+			.album-get-button,
+			.duration-fill-button,
+			.add-button {
+				&:focus,
+				&:hover {
+					border: none !important;
+				}
+			}
+		}
+	}
+}
+
+.modal-card-body {
+	display: flex;
 }
 
 .left-section {
 	flex-basis: unset !important;
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+	margin-right: 16px;
 
 	.top-section {
 		display: flex;
@@ -1981,6 +2002,8 @@ export default {
 .right-section {
 	flex-basis: unset !important;
 	flex-grow: 0 !important;
+	display: flex;
+	height: 100%;
 
 	#tabs-container {
 		width: 376px;
