@@ -1,20 +1,11 @@
 <template>
 	<div>
-		<modal title="Edit Song" class="song-modal">
+		<modal title="Edit Song" class="song-modal" :wide="true" :split="true">
 			<template #body>
 				<div class="left-section">
 					<div class="top-section">
 						<div class="player-section">
-							<div id="video-container">
-								<div
-									id="editSongPlayer"
-									style="
-										width: 100%;
-										height: 100%;
-										min-height: 200px;
-									"
-								/>
-							</div>
+							<div id="editSongPlayer" />
 
 							<div v-show="youtubeError" class="player-error">
 								<h2>{{ youtubeErrorMessage }}</h2>
@@ -75,7 +66,6 @@
 									</button>
 								</div>
 								<div class="player-footer-center">
-									<img src="/assets/social/youtube.svg" />
 									<span>
 										<span>
 											{{ youtubeVideoCurrentTime }}
@@ -125,6 +115,13 @@
 								</div>
 							</div>
 						</div>
+						<img
+							class="thumbnail-preview"
+							:src="song.thumbnail"
+							onerror="this.src='/assets/notes-transparent.png'"
+							ref="thumbnailElement"
+							v-if="songDataLoaded"
+						/>
 					</div>
 
 					<div class="edit-section" v-if="songDataLoaded">
@@ -193,17 +190,10 @@
 							</div>
 						</div>
 
-						<div class="control is-grouped album-art-container">
-							<label class="label">Album art</label>
+						<div class="control is-grouped">
+							<div class="album-art-container">
+								<label class="label">Album art</label>
 
-							<div>
-								<img
-									class="thumbnail-preview"
-									:src="song.thumbnail"
-									onerror="this.src='/assets/notes-transparent.png'"
-									ref="thumbnailElement"
-									v-if="songDataLoaded"
-								/>
 								<p class="control has-addons">
 									<input
 										class="input"
@@ -939,8 +929,8 @@ export default {
 							this.video.player = new window.YT.Player(
 								"editSongPlayer",
 								{
-									height: 270,
-									width: 480,
+									height: 298,
+									width: 530,
 									videoId: this.song.youtubeId,
 									host: "https://www.youtube-nocookie.com",
 									playerVars: {
@@ -1584,16 +1574,6 @@ export default {
 };
 </script>
 
-<style lang="scss">
-#editSongPlayer {
-	position: absolute;
-	top: 0;
-	left: 0;
-	width: 100%;
-	height: 100%;
-}
-</style>
-
 <style lang="scss" scoped>
 .night-mode {
 	.edit-section,
@@ -1612,7 +1592,7 @@ export default {
 
 	.autosuggest-item {
 		background-color: var(--dark-grey) !important;
-		color: white !important;
+		color: var(--white) !important;
 		border-color: var(--dark-grey) !important;
 	}
 
@@ -1625,87 +1605,43 @@ export default {
 		background: var(--dark-grey) !important;
 		color: var(--white) !important;
 	}
-}
 
-.song-modal {
-	&::v-deep {
-		.modal-card {
-			width: 1300px;
-			height: 100%;
-
-			.modal-card-body {
-				display: flex;
-				column-gap: 16px;
-				row-gap: 16px;
-
-				@media screen and (max-width: 1000px) {
-					flex-wrap: wrap;
-				}
-
-				> div {
-					display: flex;
-					flex-grow: 1;
-					height: 100%;
-					overflow: auto;
-				}
-			}
-
-			.modal-card-foot {
-				.right {
-					display: flex;
-					margin-left: auto;
-					margin-right: 0;
+	.left-section {
+		.edit-section {
+			.album-get-button,
+			.duration-fill-button,
+			.add-button {
+				&:focus,
+				&:hover {
+					border: none !important;
 				}
 			}
 		}
 	}
 }
 
-#video-container {
-	position: relative;
-	padding-bottom: 56.25%; /* proportion value to aspect ratio 16:9 (9 / 16 = 0.5625 or 56.25%) */
-	height: 0;
-	overflow: hidden;
-
-	.player-cannot-autoplay {
-		position: relative;
-		width: 100%;
-		height: 100%;
-		bottom: calc(100% + 5px);
-		background-color: var(--primary-color);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-
-		p {
-			color: var(--white);
-			font-size: 26px;
-			text-align: center;
-		}
-	}
+.modal-card-body {
+	display: flex;
 }
 
 .left-section {
+	flex-basis: unset !important;
+	height: 100%;
 	display: flex;
 	flex-direction: column;
-	flex-grow: 0 !important;
-	height: inherit !important;
-
-	@media screen and (max-width: 1245px) {
-		flex-grow: 1 !important;
-	}
+	margin-right: 16px;
 
 	.top-section {
 		display: flex;
-		flex-direction: column;
 
 		.player-section {
+			width: 530px;
 			display: flex;
 			flex-direction: column;
 
 			.player-error {
 				height: 318px;
-				// width: 530px;
+				width: 530px;
 				display: block;
 				border: 1px rgba(163, 224, 255, 0.75) solid;
 				border-radius: 5px 5px 0px 0px;
@@ -1720,22 +1656,17 @@ export default {
 				}
 			}
 
-			#durationCanvas {
-				max-width: 100%;
-			}
-
 			.player-footer {
 				border: 1px solid var(--light-grey-3);
 				border-radius: 0px 0px 3px 3px;
 				display: flex;
 				justify-content: space-between;
-				padding: 10px;
-				width: 100%;
-				background-color: var(--white);
-				flex-direction: column;
-				flex-flow: wrap;
+				height: 54px;
+				padding-left: 10px;
+				padding-right: 10px;
 
 				> * {
+					width: 33.3%;
 					display: flex;
 					align-items: center;
 				}
@@ -1756,7 +1687,7 @@ export default {
 					justify-content: center;
 					align-items: center;
 					flex: 2;
-					font-size: 21px;
+					font-size: 18px;
 					font-weight: 400;
 					width: 200px;
 					margin: 0 5px;
@@ -1877,10 +1808,18 @@ export default {
 				}
 			}
 		}
+
+		.thumbnail-preview {
+			width: 189px;
+			height: 189px;
+			margin-left: 16px;
+		}
 	}
 
 	.edit-section {
+		width: 735px;
 		border: 1px solid var(--light-grey-3);
+		flex: 1;
 		margin-top: 16px;
 		border-radius: 3px;
 
@@ -1942,26 +1881,7 @@ export default {
 		}
 
 		.album-art-container {
-			display: flex;
-			flex-direction: column;
-
-			div {
-				display: flex;
-				flex-direction: row;
-				align-items: center;
-
-				.thumbnail-preview {
-					border: 1px solid var(--light-grey-3);
-
-					width: 75px;
-					height: 75px;
-				}
-
-				.control {
-					margin-left: 20px;
-					width: 100%;
-				}
-			}
+			width: 100%;
 		}
 
 		.artists-container {
@@ -2080,20 +2000,17 @@ export default {
 }
 
 .right-section {
+	flex-basis: unset !important;
+	flex-grow: 0 !important;
 	display: flex;
-	flex-wrap: wrap;
-	flex-basis: 450px;
-	overflow-y: auto;
-
-	@media screen and (max-width: 1245px) {
-		height: inherit !important;
-	}
+	height: 100%;
 
 	#tabs-container {
+		width: 376px;
+		background-color: var(--light-grey);
+		border: 1px rgba(163, 224, 255, 0.75) solid;
+		border-radius: 5px;
 		overflow: auto;
-		display: flex;
-		flex-direction: column;
-		flex-grow: 1;
 
 		#tab-selection {
 			display: flex;

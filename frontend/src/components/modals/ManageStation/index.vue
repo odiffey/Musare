@@ -8,68 +8,23 @@
 		"
 		:style="`--primary-color: var(--${station.theme})`"
 		class="manage-station-modal"
+		:wide="true"
+		:split="true"
 	>
-		<template #body>
-			<div class="custom-modal-body" v-if="station && station._id">
-				<div class="left-section">
-					<div class="section tabs-container">
-						<div class="tab-selection">
-							<button
-								v-if="isOwnerOrAdmin()"
-								class="button is-default"
-								:class="{ selected: tab === 'settings' }"
-								ref="settings-tab"
-								@click="showTab('settings')"
-							>
-								Settings
-							</button>
-							<button
-								v-if="
-									isOwnerOrAdmin() ||
-									(loggedIn &&
-										station.type === 'community' &&
-										station.partyMode &&
-										((station.locked && isOwnerOrAdmin()) ||
-											!station.locked))
-								"
-								class="button is-default"
-								:class="{ selected: tab === 'playlists' }"
-								ref="playlists-tab"
-								@click="showTab('playlists')"
-							>
-								Playlists
-							</button>
-							<button
-								v-if="
-									loggedIn &&
-									station.type === 'community' &&
-									station.partyMode &&
-									((station.locked && isOwnerOrAdmin()) ||
-										!station.locked)
-								"
-								class="button is-default"
-								:class="{ selected: tab === 'songs' }"
-								ref="songs-tab"
-								@click="showTab('songs')"
-							>
-								Add Songs
-							</button>
-							<button
-								v-if="isOwnerOrAdmin()"
-								class="button is-default"
-								:class="{ selected: tab === 'blacklist' }"
-								ref="blacklist-tab"
-								@click="showTab('blacklist')"
-							>
-								Blacklist
-							</button>
-						</div>
-						<settings
+		<template #body v-if="station && station._id">
+			<div class="left-section">
+				<div class="section tabs-container">
+					<div class="tab-selection">
+						<button
 							v-if="isOwnerOrAdmin()"
-							class="tab"
-							v-show="tab === 'settings'"
-						/>
-						<playlists
+							class="button is-default"
+							:class="{ selected: tab === 'settings' }"
+							ref="settings-tab"
+							@click="showTab('settings')"
+						>
+							Settings
+						</button>
+						<button
 							v-if="
 								isOwnerOrAdmin() ||
 								(loggedIn &&
@@ -78,10 +33,14 @@
 									((station.locked && isOwnerOrAdmin()) ||
 										!station.locked))
 							"
-							class="tab"
-							v-show="tab === 'playlists'"
-						/>
-						<songs
+							class="button is-default"
+							:class="{ selected: tab === 'playlists' }"
+							ref="playlists-tab"
+							@click="showTab('playlists')"
+						>
+							Playlists
+						</button>
+						<button
 							v-if="
 								loggedIn &&
 								station.type === 'community' &&
@@ -89,64 +48,105 @@
 								((station.locked && isOwnerOrAdmin()) ||
 									!station.locked)
 							"
-							class="tab"
-							v-show="tab === 'songs'"
-						/>
-						<blacklist
+							class="button is-default"
+							:class="{ selected: tab === 'songs' }"
+							ref="songs-tab"
+							@click="showTab('songs')"
+						>
+							Add Songs
+						</button>
+						<button
 							v-if="isOwnerOrAdmin()"
-							class="tab"
-							v-show="tab === 'blacklist'"
-						/>
+							class="button is-default"
+							:class="{ selected: tab === 'blacklist' }"
+							ref="blacklist-tab"
+							@click="showTab('blacklist')"
+						>
+							Blacklist
+						</button>
 					</div>
-				</div>
-				<div class="right-section">
-					<div class="section">
-						<div class="queue-title">
-							<h4 class="section-title">Queue</h4>
-							<i
-								v-if="isOwnerOrAdmin() && stationPaused"
-								@click="resumeStation()"
-								class="material-icons resume-station"
-								content="Resume Station"
-								v-tippy
-							>
-								play_arrow
-							</i>
-							<i
-								v-if="isOwnerOrAdmin() && !stationPaused"
-								@click="pauseStation()"
-								class="material-icons pause-station"
-								content="Pause Station"
-								v-tippy
-							>
-								pause
-							</i>
-							<confirm
-								v-if="isOwnerOrAdmin()"
-								@confirm="skipStation()"
-							>
-								<i
-									class="material-icons skip-station"
-									content="Force Skip Station"
-									v-tippy
-								>
-									skip_next
-								</i>
-							</confirm>
-						</div>
-						<hr class="section-horizontal-rule" />
-						<song-item
-							v-if="currentSong._id"
-							:song="currentSong"
-							:requested-by="
+					<settings
+						v-if="isOwnerOrAdmin()"
+						class="tab"
+						v-show="tab === 'settings'"
+					/>
+					<playlists
+						v-if="
+							isOwnerOrAdmin() ||
+							(loggedIn &&
 								station.type === 'community' &&
-								station.partyMode === true
-							"
-							header="Currently Playing.."
-							class="currently-playing"
-						/>
-						<queue sector="manageStation" />
+								station.partyMode &&
+								((station.locked && isOwnerOrAdmin()) ||
+									!station.locked))
+						"
+						class="tab"
+						v-show="tab === 'playlists'"
+					/>
+					<songs
+						v-if="
+							loggedIn &&
+							station.type === 'community' &&
+							station.partyMode &&
+							((station.locked && isOwnerOrAdmin()) ||
+								!station.locked)
+						"
+						class="tab"
+						v-show="tab === 'songs'"
+					/>
+					<blacklist
+						v-if="isOwnerOrAdmin()"
+						class="tab"
+						v-show="tab === 'blacklist'"
+					/>
+				</div>
+			</div>
+			<div class="right-section">
+				<div class="section">
+					<div class="queue-title">
+						<h4 class="section-title">Queue</h4>
+						<i
+							v-if="isOwnerOrAdmin() && stationPaused"
+							@click="resumeStation()"
+							class="material-icons resume-station"
+							content="Resume Station"
+							v-tippy
+						>
+							play_arrow
+						</i>
+						<i
+							v-if="isOwnerOrAdmin() && !stationPaused"
+							@click="pauseStation()"
+							class="material-icons pause-station"
+							content="Pause Station"
+							v-tippy
+						>
+							pause
+						</i>
+						<confirm
+							v-if="isOwnerOrAdmin()"
+							@confirm="skipStation()"
+						>
+							<i
+								class="material-icons skip-station"
+								content="Force Skip Station"
+								v-tippy
+							>
+								skip_next
+							</i>
+						</confirm>
 					</div>
+					<hr class="section-horizontal-rule" />
+					<song-item
+						v-if="currentSong._id"
+						:song="currentSong"
+						:requested-by="
+							station.type === 'community' &&
+							station.partyMode === true
+						"
+						header="Currently Playing.."
+						class="currently-playing"
+					/>
+					<queue sector="manageStation" />
 				</div>
 			</div>
 		</template>
@@ -182,10 +182,7 @@
 						Clear and refill station queue
 					</a>
 				</confirm>
-				<confirm
-					v-if="station && station.type === 'community'"
-					@confirm="removeStation()"
-				>
+				<confirm @confirm="removeStation()">
 					<button class="button is-danger">Delete station</button>
 				</confirm>
 			</div>
@@ -589,22 +586,16 @@ export default {
 </script>
 
 <style lang="scss">
-.manage-station-modal.modal {
-	z-index: 1800;
-	.modal-card {
-		width: 1300px;
-		height: 100%;
-		overflow: auto;
-		.tab > button {
-			width: 100%;
-			margin-bottom: 10px;
-		}
-		.currently-playing.song-item {
-			.thumbnail {
-				min-width: 130px;
-				width: 130px;
-				height: 130px;
-			}
+.manage-station-modal.modal .modal-card {
+	.tab > button {
+		width: 100%;
+		margin-bottom: 10px;
+	}
+	.currently-playing.song-item {
+		.thumbnail {
+			min-width: 130px;
+			width: 130px;
+			height: 130px;
 		}
 	}
 }
@@ -612,7 +603,7 @@ export default {
 
 <style lang="scss" scoped>
 .night-mode {
-	.manage-station-modal.modal .modal-card-body .custom-modal-body {
+	.manage-station-modal.modal .modal-card-body {
 		.left-section {
 			.tabs-container.section {
 				background-color: transparent !important;
@@ -633,26 +624,8 @@ export default {
 	}
 }
 
-.manage-station-modal.modal .modal-card-body .custom-modal-body {
-	display: flex;
-	flex-wrap: wrap;
-	height: 100%;
-
-	.section {
-		display: flex;
-		flex-direction: column;
-		flex-grow: 1;
-		width: auto;
-		padding: 15px !important;
-		margin: 0 10px;
-	}
-
+.manage-station-modal.modal .modal-card-body {
 	.left-section {
-		flex-basis: 50%;
-		height: 100%;
-		overflow-y: auto;
-		flex-grow: 1;
-
 		.tabs-container {
 			padding: 15px 0 !important;
 			.tab-selection {
@@ -688,10 +661,6 @@ export default {
 		}
 	}
 	.right-section {
-		flex-basis: 50%;
-		height: 100%;
-		overflow-y: auto;
-		flex-grow: 1;
 		.section {
 			.queue-title {
 				display: flex;
@@ -716,16 +685,6 @@ export default {
 			.currently-playing {
 				margin-bottom: 10px;
 			}
-		}
-	}
-}
-
-@media screen and (max-width: 1100px) {
-	.manage-station-modal.modal .modal-card-body .custom-modal-body {
-		.left-section,
-		.right-section {
-			flex-basis: 100%;
-			height: auto;
 		}
 	}
 }
