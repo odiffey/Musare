@@ -337,7 +337,7 @@ export default {
 	}
 
 	.unresolve-icon {
-		color: var(--red);
+		color: var(--dark-red);
 		cursor: pointer;
 	}
 }
