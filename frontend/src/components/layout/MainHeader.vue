@@ -52,13 +52,24 @@
 				<a class="nav-item" @click="openModal('register')">Register</a>
 			</span>
 		</div>
+
+		<christmas-lights
+			v-if="siteSettings.christmas"
+			:lights="Math.min(Math.max(Math.floor(windowWidth / 175), 5), 15)"
+		/>
 	</nav>
 </template>
 
 <script>
 import { mapState, mapGetters, mapActions } from "vuex";
+import { defineAsyncComponent } from "vue";
 
 export default {
+	components: {
+		ChristmasLights: defineAsyncComponent(() =>
+			import("@/components/ChristmasLights.vue")
+		)
+	},
 	props: {
 		hideLogo: { type: Boolean, default: false },
 		transparent: { type: Boolean, default: false },
@@ -70,8 +81,10 @@ export default {
 			frontendDomain: "",
 			siteSettings: {
 				logo_white: "",
-				sitename: ""
-			}
+				sitename: "",
+				christmas: false
+			},
+			windowWidth: 0
 		};
 	},
 	computed: {
@@ -89,8 +102,16 @@ export default {
 	async mounted() {
 		this.frontendDomain = await lofig.get("frontendDomain");
 		this.siteSettings = await lofig.get("siteSettings");
+
+		this.$nextTick(() => {
+			this.onResize();
+			window.addEventListener("resize", this.onResize);
+		});
 	},
 	methods: {
+		onResize() {
+			this.windowWidth = window.innerWidth;
+		},
 		...mapActions("modalVisibility", ["openModal"]),
 		...mapActions("user/auth", ["logout"])
 	}

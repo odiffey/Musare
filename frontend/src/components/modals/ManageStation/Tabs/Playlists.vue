@@ -87,6 +87,99 @@
 				</p>
 			</div>
 			<div class="tab" v-show="tab === 'search'">
+				<div v-if="featuredPlaylists.length > 0">
+					<label class="label"> Featured playlists </label>
+					<playlist-item
+						v-for="featuredPlaylist in featuredPlaylists"
+						:key="`featuredKey-${featuredPlaylist._id}`"
+						:playlist="featuredPlaylist"
+						:show-owner="true"
+					>
+						<template #actions>
+							<i
+								v-if="isExcluded(featuredPlaylist._id)"
+								class="material-icons stop-icon"
+								content="This playlist is blacklisted in this station"
+								v-tippy="{ theme: 'info' }"
+								>play_disabled</i
+							>
+							<confirm
+								v-if="
+									(isOwnerOrAdmin() ||
+										(station.type === 'community' &&
+											station.partyMode)) &&
+									isSelected(featuredPlaylist._id)
+								"
+								@confirm="
+									deselectPlaylist(featuredPlaylist._id)
+								"
+							>
+								<i
+									class="material-icons stop-icon"
+									content="Stop playing songs from this playlist"
+									v-tippy
+								>
+									stop
+								</i>
+							</confirm>
+							<i
+								v-if="
+									(isOwnerOrAdmin() ||
+										(station.type === 'community' &&
+											station.partyMode)) &&
+									!isSelected(featuredPlaylist._id) &&
+									!isExcluded(featuredPlaylist._id)
+								"
+								@click="selectPlaylist(featuredPlaylist)"
+								class="material-icons play-icon"
+								:content="
+									station.partyMode
+										? 'Request songs from this playlist'
+										: 'Play songs from this playlist'
+								"
+								v-tippy
+								>play_arrow</i
+							>
+							<confirm
+								v-if="
+									isOwnerOrAdmin() &&
+									!isExcluded(featuredPlaylist._id)
+								"
+								@confirm="
+									blacklistPlaylist(featuredPlaylist._id)
+								"
+							>
+								<i
+									class="material-icons stop-icon"
+									content="Blacklist Playlist"
+									v-tippy
+									>block</i
+								>
+							</confirm>
+							<i
+								v-if="featuredPlaylist.createdBy === myUserId"
+								@click="showPlaylist(featuredPlaylist._id)"
+								class="material-icons edit-icon"
+								content="Edit Playlist"
+								v-tippy
+								>edit</i
+							>
+							<i
+								v-if="
+									featuredPlaylist.createdBy !== myUserId &&
+									(featuredPlaylist.privacy === 'public' ||
+										isAdmin())
+								"
+								@click="showPlaylist(featuredPlaylist._id)"
+								class="material-icons edit-icon"
+								content="View Playlist"
+								v-tippy
+								>visibility</i
+							>
+						</template>
+					</playlist-item>
+					<br />
+				</div>
 				<label class="label"> Search for a public playlist </label>
 				<div class="control is-grouped input-with-button">
 					<p class="control is-expanded">
@@ -340,7 +433,8 @@ export default {
 				count: 0,
 				resultsLeft: 0,
 				results: []
-			}
+			},
+			featuredPlaylists: []
 		};
 	},
 	computed: {
@@ -385,6 +479,11 @@ export default {
 				if (res.status === "success")
 					this.setPlaylists(res.data.playlists);
 				this.orderOfPlaylists = this.calculatePlaylistOrder(); // order in regards to the database
+			});
+
+			this.socket.dispatch("playlists.indexFeaturedPlaylists", res => {
+				if (res.status === "success")
+					this.featuredPlaylists = res.data.playlists;
 			});
 
 			this.socket.dispatch(
@@ -599,6 +698,18 @@ export default {
 		background: var(--dark-grey) !important;
 		color: var(--white) !important;
 	}
+}
+
+.excluded-icon {
+	color: var(--dark-red);
+}
+
+.included-icon {
+	color: var(--green);
+}
+
+.selected-icon {
+	color: var(--purple);
 }
 
 .station-playlists {
