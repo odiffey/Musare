@@ -302,4 +302,8 @@ export default {
 		}
 	}
 }
+
+.christmas-mode .nav {
+	border-radius: 0 !important;
+}
 </style>
