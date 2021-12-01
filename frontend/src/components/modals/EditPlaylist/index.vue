@@ -62,7 +62,9 @@
 						v-if="
 							userId === playlist.createdBy ||
 							isEditable() ||
-							(playlist.type === 'genre' && isAdmin())
+							((playlist.type === 'genre' ||
+								playlist.type === 'artist') &&
+								isAdmin())
 						"
 					/>
 					<add-songs
