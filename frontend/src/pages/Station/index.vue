@@ -268,7 +268,7 @@
 											'e6vkFbtSGm0'
 										].includes(currentSong.youtubeId)
 									"
-									src="https://openclipart.org/image/800px/312117"
+									src="/assets/santa.png"
 									:style="{
 										position: 'absolute',
 										top: `-30px`,
