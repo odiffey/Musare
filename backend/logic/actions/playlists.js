@@ -2412,5 +2412,51 @@ export default {
 				});
 			}
 		);
+	}),
+
+	/**
+	 * Create missing artist playlists
+	 *
+	 * @param {object} session - the session object automatically added by socket.io
+	 * @param {Function} cb - gets called with the result
+	 */
+	createMissingArtistPlaylists: isAdminRequired(async function index(session, cb) {
+		async.waterfall(
+			[
+				next => {
+					PlaylistsModule.runJob("CREATE_MISSING_ARTIST_PLAYLISTS", this)
+						.then(() => {
+							next();
+						})
+						.catch(err => {
+							next(err);
+						});
+				}
+			],
+			async err => {
+				if (err) {
+					err = await UtilsModule.runJob("GET_ERROR", { error: err }, this);
+
+					this.log(
+						"ERROR",
+						"PLAYLIST_CREATE_MISSING_ARTIST_PLAYLISTS",
+						`Creating missing artist playlists failed for user "${session.userId}". "${err}"`
+					);
+
+					return cb({ status: "error", message: err });
+				}
+
+				this.log(
+					"SUCCESS",
+					"PLAYLIST_CREATE_MISSING_ARTIST_PLAYLISTS",
+					`Successfully created missing artist playlists for user "${session.userId}".`
+				);
+
+				return cb({
+					status: "success",
+					message: "Missing artist playlists have been successfully created"
+				});
+			}
+		);
 	})
 };
