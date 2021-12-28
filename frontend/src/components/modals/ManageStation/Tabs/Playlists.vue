@@ -37,7 +37,7 @@
 						:show-owner="true"
 					>
 						<template #actions>
-							<confirm
+							<quick-confirm
 								v-if="isOwnerOrAdmin()"
 								@confirm="deselectPlaylist(playlist._id)"
 							>
@@ -48,8 +48,8 @@
 								>
 									stop
 								</i>
-							</confirm>
-							<confirm
+							</quick-confirm>
+							<quick-confirm
 								v-if="isOwnerOrAdmin()"
 								@confirm="blacklistPlaylist(playlist._id)"
 							>
@@ -59,7 +59,7 @@
 									v-tippy
 									>block</i
 								>
-							</confirm>
+							</quick-confirm>
 							<i
 								v-if="playlist.createdBy === myUserId"
 								@click="showPlaylist(playlist._id)"
@@ -103,7 +103,7 @@
 								v-tippy="{ theme: 'info' }"
 								>play_disabled</i
 							>
-							<confirm
+							<quick-confirm
 								v-if="
 									(isOwnerOrAdmin() ||
 										(station.type === 'community' &&
@@ -121,7 +121,7 @@
 								>
 									stop
 								</i>
-							</confirm>
+							</quick-confirm>
 							<i
 								v-if="
 									(isOwnerOrAdmin() ||
@@ -140,7 +140,7 @@
 								v-tippy
 								>play_arrow</i
 							>
-							<confirm
+							<quick-confirm
 								v-if="
 									isOwnerOrAdmin() &&
 									!isExcluded(featuredPlaylist._id)
@@ -155,7 +155,7 @@
 									v-tippy
 									>block</i
 								>
-							</confirm>
+							</quick-confirm>
 							<i
 								v-if="featuredPlaylist.createdBy === myUserId"
 								@click="showPlaylist(featuredPlaylist._id)"
@@ -214,7 +214,7 @@
 								v-tippy="{ theme: 'info' }"
 								>play_disabled</i
 							>
-							<confirm
+							<quick-confirm
 								v-if="
 									(isOwnerOrAdmin() ||
 										(station.type === 'community' &&
@@ -230,7 +230,7 @@
 								>
 									stop
 								</i>
-							</confirm>
+							</quick-confirm>
 							<i
 								v-if="
 									(isOwnerOrAdmin() ||
@@ -249,7 +249,7 @@
 								v-tippy
 								>play_arrow</i
 							>
-							<confirm
+							<quick-confirm
 								v-if="
 									isOwnerOrAdmin() &&
 									!isExcluded(playlist._id)
@@ -262,7 +262,7 @@
 									v-tippy
 									>block</i
 								>
-							</confirm>
+							</quick-confirm>
 							<i
 								v-if="playlist.createdBy === myUserId"
 								@click="showPlaylist(playlist._id)"
@@ -352,7 +352,7 @@
 										v-tippy
 										>play_arrow</i
 									>
-									<confirm
+									<quick-confirm
 										v-if="
 											station.type === 'community' &&
 											(isOwnerOrAdmin() ||
@@ -371,8 +371,8 @@
 											v-tippy
 											>stop</i
 										>
-									</confirm>
-									<confirm
+									</quick-confirm>
+									<quick-confirm
 										v-if="
 											isOwnerOrAdmin() &&
 											!isExcluded(element._id)
@@ -387,7 +387,7 @@
 											v-tippy
 											>block</i
 										>
-									</confirm>
+									</quick-confirm>
 									<i
 										@click="showPlaylist(element._id)"
 										class="material-icons edit-icon"
@@ -413,14 +413,14 @@ import Toast from "toasters";
 import ws from "@/ws";
 
 import PlaylistItem from "@/components/PlaylistItem.vue";
-import Confirm from "@/components/Confirm.vue";
+import QuickConfirm from "@/components/QuickConfirm.vue";
 
 import SortablePlaylists from "@/mixins/SortablePlaylists.vue";
 
 export default {
 	components: {
 		PlaylistItem,
-		Confirm
+		QuickConfirm
 	},
 	mixins: [SortablePlaylists],
 	data() {
@@ -475,7 +475,7 @@ export default {
 	},
 	methods: {
 		init() {
-			this.socket.dispatch("playlists.indexMyPlaylists", true, res => {
+			this.socket.dispatch("playlists.indexMyPlaylists", res => {
 				if (res.status === "success")
 					this.setPlaylists(res.data.playlists);
 				this.orderOfPlaylists = this.calculatePlaylistOrder(); // order in regards to the database

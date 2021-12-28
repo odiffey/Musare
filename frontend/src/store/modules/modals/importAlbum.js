@@ -25,7 +25,8 @@ export default {
 		updateEditingSongs: ({ commit }, editingSongs) =>
 			commit("updateEditingSongs", editingSongs),
 		resetPlaylistSongs: ({ commit }) => commit("resetPlaylistSongs"),
-		togglePrefillDiscogs: ({ commit }) => commit("togglePrefillDiscogs"),
+		updatePrefillDiscogs: ({ commit }, updatedPrefill) =>
+			commit("updatePrefillDiscogs", updatedPrefill),
 		updatePlaylistSong: ({ commit }, updatedSong) =>
 			commit("updatePlaylistSong", updatedSong)
 	},
@@ -62,13 +63,17 @@ export default {
 				JSON.stringify(state.originalPlaylistSongs)
 			);
 		},
-		togglePrefillDiscogs(state) {
-			state.prefillDiscogs = !state.prefillDiscogs;
+		updatePrefillDiscogs(state, updatedPrefill) {
+			state.prefillDiscogs = updatedPrefill;
 		},
 		updatePlaylistSong(state, updatedSong) {
 			state.playlistSongs.forEach((song, index) => {
 				if (song._id === updatedSong._id)
 					state.playlistSongs[index] = updatedSong;
+			});
+			state.originalPlaylistSongs.forEach((song, index) => {
+				if (song._id === updatedSong._id)
+					state.originalPlaylistSongs[index] = updatedSong;
 			});
 		}
 	}

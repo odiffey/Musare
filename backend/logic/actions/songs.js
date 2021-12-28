@@ -150,65 +150,70 @@ export default {
 	 * @param {object} session - the session object automatically added by the websocket
 	 * @param cb
 	 */
-	length: isAdminRequired(async function length(session, status, cb) {
+	length: isAdminRequired(async function length(session, cb) {
 		const songModel = await DBModule.runJob("GET_MODEL", { modelName: "song" }, this);
 		async.waterfall(
 			[
 				next => {
-					songModel.countDocuments({ status }, next);
+					songModel.countDocuments({}, next);
 				}
 			],
 			async (err, count) => {
 				if (err) {
 					err = await UtilsModule.runJob("GET_ERROR", { error: err }, this);
-					this.log(
-						"ERROR",
-						"SONGS_LENGTH",
-						`Failed to get length from songs that have the status ${status}. "${err}"`
-					);
+					this.log("ERROR", "SONGS_LENGTH", `Failed to get length from songs. "${err}"`);
 					return cb({ status: "error", message: err });
 				}
-				this.log(
-					"SUCCESS",
-					"SONGS_LENGTH",
-					`Got length from songs that have the status ${status} successfully.`
-				);
+				this.log("SUCCESS", "SONGS_LENGTH", `Got length from songs successfully.`);
 				return cb({ status: "success", message: "Successfully got length of songs.", data: { length: count } });
 			}
 		);
 	}),
 
 	/**
-	 * Gets a set of songs
+	 * Gets songs, used in the admin songs page by the AdvancedTable component
 	 *
 	 * @param {object} session - the session object automatically added by the websocket
-	 * @param set - the set number to return
+	 * @param page - the page
+	 * @param pageSize - the size per page
+	 * @param properties - the properties to return for each song
+	 * @param sort - the sort object
+	 * @param queries - the queries array
+	 * @param operator - the operator for queries
 	 * @param cb
 	 */
-	getSet: isAdminRequired(async function getSet(session, set, status, cb) {
-		const songModel = await DBModule.runJob("GET_MODEL", { modelName: "song" }, this);
+	getData: isAdminRequired(async function getSet(session, page, pageSize, properties, sort, queries, operator, cb) {
 		async.waterfall(
 			[
 				next => {
-					songModel
-						.find({ status })
-						.skip(15 * (set - 1))
-						.limit(15)
-						.exec(next);
+					SongsModule.runJob(
+						"GET_DATA",
+						{
+							page,
+							pageSize,
+							properties,
+							sort,
+							queries,
+							operator
+						},
+						this
+					)
+						.then(response => {
+							next(null, response);
+						})
+						.catch(err => {
+							next(err);
+						});
 				}
 			],
-			async (err, songs) => {
+			async (err, response) => {
 				if (err) {
 					err = await UtilsModule.runJob("GET_ERROR", { error: err }, this);
-					this.log(
-						"ERROR",
-						"SONGS_GET_SET",
-						`Failed to get set from songs that have the status ${status}. "${err}"`
-					);
+					this.log("ERROR", "SONGS_GET_DATA", `Failed to get data from songs. "${err}"`);
 					return cb({ status: "error", message: err });
 				}
-				this.log("SUCCESS", "SONGS_GET_SET", `Got set from songs that have the status ${status} successfully.`);
-				return cb({ status: "success", message: "Successfully got set of songs.", data: { songs } });
+				this.log("SUCCESS", "SONGS_GET_DATA", `Got data from songs successfully.`);
+				return cb({ status: "success", message: "Successfully got data from songs.", data: response });
 			}
 		);
 	}),
@@ -219,7 +224,7 @@ export default {
 	 * @param {object} session - the session object automatically added by the websocket
 	 * @param cb
 	 */
-	updateAll: isAdminRequired(async function length(session, cb) {
+	updateAll: isAdminRequired(async function updateAll(session, cb) {
 		async.waterfall(
 			[
 				next => {
@@ -240,6 +245,41 @@ export default {
 				}
 				this.log("SUCCESS", "SONGS_UPDATE_ALL", `Updated all songs successfully.`);
 				return cb({ status: "success", message: "Successfully updated all songs." });
+			}
+		);
+	}),
+
+	/**
+	 * Recalculates all song ratings
+	 *
+	 * @param {object} session - the session object automatically added by the websocket
+	 * @param cb
+	 */
+	recalculateAllRatings: isAdminRequired(async function recalculateAllRatings(session, cb) {
+		async.waterfall(
+			[
+				next => {
+					SongsModule.runJob("RECALCULATE_ALL_SONG_RATINGS", {}, this)
+						.then(() => {
+							next();
+						})
+						.catch(err => {
+							next(err);
+						});
+				}
+			],
+			async err => {
+				if (err) {
+					err = await UtilsModule.runJob("GET_ERROR", { error: err }, this);
+					this.log(
+						"ERROR",
+						"SONGS_RECALCULATE_ALL_RATINGS",
+						`Failed to recalculate all song ratings. "${err}"`
+					);
+					return cb({ status: "error", message: err });
+				}
+				this.log("SUCCESS", "SONGS_RECALCULATE_ALL_RATINGS", `Recalculated all song ratings successfully.`);
+				return cb({ status: "success", message: "Successfully recalculated all song ratings." });
 			}
 		);
 	}),
@@ -584,7 +624,7 @@ export default {
 					});
 
 					SongsModule.runJob("UPDATE_SONG", { songId: song._id, oldStatus });
-					next(null, song);
+					next(null, song, oldStatus);
 				}
 			],
 			async err => {
@@ -801,8 +841,28 @@ export default {
 							{
 								session,
 								namespace: "playlists",
+								action: "removeSongFromPlaylist",
+								args: [youtubeId, user.dislikedSongsPlaylist]
+							},
+							this
+						)
+						.then(res => {
+							if (res.status === "error")
+								return next("Unable to remove song from the 'Disliked Songs' playlist.");
+							return next(null, song, user.likedSongsPlaylist);
+						})
+						.catch(err => next(err));
+				},
+
+				(song, likedSongsPlaylist, next) =>
+					this.module
+						.runJob(
+							"RUN_ACTION2",
+							{
+								session,
+								namespace: "playlists",
 								action: "addSongToPlaylist",
-								args: [false, youtubeId, user.likedSongsPlaylist]
+								args: [false, youtubeId, likedSongsPlaylist]
 							},
 							this
 						)
@@ -813,30 +873,9 @@ export default {
 								return next("Unable to add song to the 'Liked Songs' playlist.");
 							}
 
-							return next(null, song, user.dislikedSongsPlaylist);
-						})
-						.catch(err => next(err));
-				},
-
-				(song, dislikedSongsPlaylist, next) => {
-					this.module
-						.runJob(
-							"RUN_ACTION2",
-							{
-								session,
-								namespace: "playlists",
-								action: "removeSongFromPlaylist",
-								args: [youtubeId, dislikedSongsPlaylist]
-							},
-							this
-						)
-						.then(res => {
-							if (res.status === "error")
-								return next("Unable to remove song from the 'Disliked Songs' playlist.");
 							return next(null, song);
 						})
-						.catch(err => next(err));
-				},
+						.catch(err => next(err)),
 
 				(song, next) => {
 					SongsModule.runJob("RECALCULATE_SONG_RATINGS", { songId: song._id, youtubeId })
@@ -844,7 +883,7 @@ export default {
 						.catch(err => next(err));
 				}
 			],
-			async (err, song, { likes, dislikes }) => {
+			async (err, song, ratings) => {
 				if (err) {
 					err = await UtilsModule.runJob("GET_ERROR", { error: err }, this);
 					this.log(
@@ -854,6 +893,8 @@ export default {
 					);
 					return cb({ status: "error", message: err });
 				}
+
+				const { likes, dislikes } = ratings;
 
 				SongsModule.runJob("UPDATE_SONG", { songId: song._id });
 
@@ -918,8 +959,28 @@ export default {
 							{
 								session,
 								namespace: "playlists",
+								action: "removeSongFromPlaylist",
+								args: [youtubeId, user.likedSongsPlaylist]
+							},
+							this
+						)
+						.then(res => {
+							if (res.status === "error")
+								return next("Unable to remove song from the 'Liked Songs' playlist.");
+							return next(null, song, user.dislikedSongsPlaylist);
+						})
+						.catch(err => next(err));
+				},
+
+				(song, dislikedSongsPlaylist, next) =>
+					this.module
+						.runJob(
+							"RUN_ACTION2",
+							{
+								session,
+								namespace: "playlists",
 								action: "addSongToPlaylist",
-								args: [false, youtubeId, user.dislikedSongsPlaylist]
+								args: [false, youtubeId, dislikedSongsPlaylist]
 							},
 							this
 						)
@@ -930,30 +991,9 @@ export default {
 								return next("Unable to add song to the 'Disliked Songs' playlist.");
 							}
 
-							return next(null, song, user.likedSongsPlaylist);
-						})
-						.catch(err => next(err));
-				},
-
-				(song, likedSongsPlaylist, next) => {
-					this.module
-						.runJob(
-							"RUN_ACTION2",
-							{
-								session,
-								namespace: "playlists",
-								action: "removeSongFromPlaylist",
-								args: [youtubeId, likedSongsPlaylist]
-							},
-							this
-						)
-						.then(res => {
-							if (res.status === "error")
-								return next("Unable to remove song from the 'Liked Songs' playlist.");
 							return next(null, song);
 						})
-						.catch(err => next(err));
-				},
+						.catch(err => next(err)),
 
 				(song, next) => {
 					SongsModule.runJob("RECALCULATE_SONG_RATINGS", { songId: song._id, youtubeId })
@@ -961,7 +1001,7 @@ export default {
 						.catch(err => next(err));
 				}
 			],
-			async (err, song, { likes, dislikes }) => {
+			async (err, song, ratings) => {
 				if (err) {
 					err = await UtilsModule.runJob("GET_ERROR", { error: err }, this);
 					this.log(
@@ -971,6 +1011,8 @@ export default {
 					);
 					return cb({ status: "error", message: err });
 				}
+
+				const { likes, dislikes } = ratings;
 
 				SongsModule.runJob("UPDATE_SONG", { songId: song._id });
 
@@ -1074,7 +1116,7 @@ export default {
 						.catch(err => next(err));
 				}
 			],
-			async (err, song, { likes, dislikes }) => {
+			async (err, song, ratings) => {
 				if (err) {
 					err = await UtilsModule.runJob("GET_ERROR", { error: err }, this);
 					this.log(
@@ -1084,6 +1126,8 @@ export default {
 					);
 					return cb({ status: "error", message: err });
 				}
+
+				const { likes, dislikes } = ratings;
 
 				SongsModule.runJob("UPDATE_SONG", { songId: song._id });
 
@@ -1189,7 +1233,7 @@ export default {
 						.catch(err => next(err));
 				}
 			],
-			async (err, song, { likes, dislikes }) => {
+			async (err, song, ratings) => {
 				if (err) {
 					err = await UtilsModule.runJob("GET_ERROR", { error: err }, this);
 					this.log(
@@ -1199,6 +1243,8 @@ export default {
 					);
 					return cb({ status: "error", message: err });
 				}
+
+				const { likes, dislikes } = ratings;
 
 				SongsModule.runJob("UPDATE_SONG", { songId: song._id });
 

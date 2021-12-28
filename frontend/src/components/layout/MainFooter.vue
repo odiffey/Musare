@@ -5,14 +5,14 @@
 				<div id="footer-copyright">
 					<p>© Copyright {{ siteSettings.sitename }} 2015 - 2021</p>
 				</div>
-				<a id="footer-logo" href="/">
+				<router-link id="footer-logo" to="/">
 					<img
 						v-if="siteSettings.sitename === 'Musare'"
 						:src="siteSettings.logo_blue"
 						:alt="siteSettings.sitename || `Musare`"
 					/>
 					<span v-else>{{ siteSettings.sitename }}</span>
-				</a>
+				</router-link>
 				<div id="footer-links">
 					<a
 						:href="siteSettings.github"
@@ -172,6 +172,7 @@ export default {
 			max-width: 100%;
 			color: var(--primary-color);
 			user-select: none;
+			-webkit-user-drag: none;
 		}
 	}
 

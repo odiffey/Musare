@@ -30,7 +30,9 @@
 						:show-owner="true"
 					>
 						<template #actions>
-							<confirm @confirm="deselectPlaylist(playlist._id)">
+							<quick-confirm
+								@confirm="deselectPlaylist(playlist._id)"
+							>
 								<i
 									class="material-icons stop-icon"
 									content="Stop blacklisting songs from this playlist
@@ -38,7 +40,7 @@
 									v-tippy
 									>stop</i
 								>
-							</confirm>
+							</quick-confirm>
 							<i
 								v-if="playlist.createdBy === userId"
 								@click="showPlaylist(playlist._id)"
@@ -73,12 +75,12 @@ import { mapActions, mapState, mapGetters } from "vuex";
 
 import Toast from "toasters";
 import PlaylistItem from "@/components/PlaylistItem.vue";
-import Confirm from "@/components/Confirm.vue";
+import QuickConfirm from "@/components/QuickConfirm.vue";
 
 export default {
 	components: {
 		PlaylistItem,
-		Confirm
+		QuickConfirm
 	},
 	data() {
 		return {

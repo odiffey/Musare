@@ -273,7 +273,7 @@ export default {
 				},
 
 				next => {
-					playlistModel.findOne({ createdBy: session.userId, displayName: "Liked Songs" }, next);
+					playlistModel.findOne({ createdBy: session.userId, type: "user-liked" }, next);
 				},
 
 				// get all liked songs (as the global rating values for these songs will need adjusted)
@@ -288,7 +288,7 @@ export default {
 				},
 
 				next => {
-					playlistModel.findOne({ createdBy: session.userId, displayName: "Disliked Songs" }, next);
+					playlistModel.findOne({ createdBy: session.userId, type: "user-disliked" }, next);
 				},
 
 				// get all disliked songs (as the global rating values for these songs will need adjusted)
@@ -441,7 +441,7 @@ export default {
 				},
 
 				next => {
-					playlistModel.findOne({ createdBy: userId, displayName: "Liked Songs" }, next);
+					playlistModel.findOne({ createdBy: userId, type: "user-liked" }, next);
 				},
 
 				// get all liked songs (as the global rating values for these songs will need adjusted)
@@ -456,7 +456,7 @@ export default {
 				},
 
 				next => {
-					playlistModel.findOne({ createdBy: userId, displayName: "Disliked Songs" }, next);
+					playlistModel.findOne({ createdBy: userId, type: "user-disliked" }, next);
 				},
 
 				// get all disliked songs (as the global rating values for these songs will need adjusted)
@@ -753,10 +753,10 @@ export default {
 
 				// create a liked songs playlist for the new user
 				(userId, next) => {
-					PlaylistsModule.runJob("CREATE_READ_ONLY_PLAYLIST", {
+					PlaylistsModule.runJob("CREATE_USER_PLAYLIST", {
 						userId,
 						displayName: "Liked Songs",
-						type: "user"
+						type: "user-liked"
 					})
 						.then(likedSongsPlaylist => {
 							next(null, likedSongsPlaylist, userId);
@@ -766,10 +766,10 @@ export default {
 
 				// create a disliked songs playlist for the new user
 				(likedSongsPlaylist, userId, next) => {
-					PlaylistsModule.runJob("CREATE_READ_ONLY_PLAYLIST", {
+					PlaylistsModule.runJob("CREATE_USER_PLAYLIST", {
 						userId,
 						displayName: "Disliked Songs",
-						type: "user"
+						type: "user-disliked"
 					})
 						.then(dislikedSongsPlaylist => {
 							next(null, { likedSongsPlaylist, dislikedSongsPlaylist }, userId);
@@ -2547,6 +2547,81 @@ export default {
 	},
 
 	/**
+	 * Requests a password reset for a a user as an admin
+	 *
+	 * @param {object} session - the session object automatically added by the websocket
+	 * @param {string} email - the email of the user for which the password reset is intended
+	 * @param {Function} cb - gets called with the result
+	 */
+	adminRequestPasswordReset: isAdminRequired(async function adminRequestPasswordReset(session, userId, cb) {
+		const code = await UtilsModule.runJob("GENERATE_RANDOM_STRING", { length: 8 }, this);
+		const userModel = await DBModule.runJob("GET_MODEL", { modelName: "user" }, this);
+
+		const resetPasswordRequestSchema = await MailModule.runJob(
+			"GET_SCHEMA",
+			{ schemaName: "resetPasswordRequest" },
+			this
+		);
+
+		async.waterfall(
+			[
+				next => userModel.findOne({ _id: userId }, next),
+
+				(user, next) => {
+					if (!user) return next("User not found.");
+					if (!user.services.password || !user.services.password.password)
+						return next("User does not have a password set, and probably uses GitHub to log in.");
+					return next();
+				},
+
+				next => {
+					const expires = new Date();
+					expires.setDate(expires.getDate() + 1);
+					userModel.findOneAndUpdate(
+						{ _id: userId },
+						{
+							$set: {
+								"services.password.reset": {
+									code,
+									expires
+								}
+							}
+						},
+						{ runValidators: true },
+						next
+					);
+				},
+
+				(user, next) => {
+					resetPasswordRequestSchema(user.email.address, user.username, code, next);
+				}
+			],
+			async err => {
+				if (err && err !== true) {
+					err = await UtilsModule.runJob("GET_ERROR", { error: err }, this);
+					this.log(
+						"ERROR",
+						"ADMINREQUEST_PASSWORD_RESET",
+						`User '${userId}' failed to get a password reset. '${err}'`
+					);
+					return cb({ status: "error", message: err });
+				}
+
+				this.log(
+					"SUCCESS",
+					"ADMIN_REQUEST_PASSWORD_RESET",
+					`User '${userId}' successfully got sent a password reset.`
+				);
+
+				return cb({
+					status: "success",
+					message: "Successfully requested password reset for user."
+				});
+			}
+		);
+	}),
+
+	/**
 	 * Verifies a reset code
 	 *
 	 * @param {object} session - the session object automatically added by the websocket
@@ -2657,6 +2732,56 @@ export default {
 			}
 		);
 	},
+
+	/**
+	 * Resends the verify email email
+	 *
+	 * @param {object} session - the session object automatically added by the websocket
+	 * @param {string} userId - the user id of the person to resend the email to
+	 * @param {Function} cb - gets called with the result
+	 */
+	resendVerifyEmail: isAdminRequired(async function resendVerifyEmail(session, userId, cb) {
+		const userModel = await DBModule.runJob("GET_MODEL", { modelName: "user" }, this);
+		const verifyEmailSchema = await MailModule.runJob("GET_SCHEMA", { schemaName: "verifyEmail" }, this);
+
+		async.waterfall(
+			[
+				next => userModel.findOne({ _id: userId }, next),
+
+				(user, next) => {
+					if (!user) return next("User not found.");
+					if (user.email.verified) return next("The user's email is already verified.");
+					return next(null, user);
+				},
+
+				(user, next) => {
+					verifyEmailSchema(user.email.address, user.username, user.email.verificationToken, err => {
+						next(err);
+					});
+				}
+			],
+			async err => {
+				if (err && err !== true) {
+					err = await UtilsModule.runJob("GET_ERROR", { error: err }, this);
+
+					this.log(
+						"ERROR",
+						"RESEND_VERIFY_EMAIL",
+						`Couldn't resend verify email for user "${userId}". '${err}'`
+					);
+
+					return cb({ status: "error", message: err });
+				}
+
+				this.log("SUCCESS", "RESEND_VERIFY_EMAIL", `Resent verify email for user "${userId}".`);
+
+				return cb({
+					status: "success",
+					message: "Email resent successfully."
+				});
+			}
+		);
+	}),
 
 	/**
 	 * Bans a user by userId

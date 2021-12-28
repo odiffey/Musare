@@ -207,6 +207,71 @@ class _SongsModule extends CoreClass {
 	}
 
 	/**
+	 * Gets songs data
+	 *
+	 * @param {object} payload - object containing the payload
+	 * @param {string} payload.page - the page
+	 * @param {string} payload.pageSize - the page size
+	 * @param {string} payload.properties - the properties to return for each song
+	 * @param {string} payload.sort - the sort object
+	 * @param {string} payload.queries - the queries array
+	 * @param {string} payload.operator - the operator for queries
+	 * @returns {Promise} - returns a promise (resolve, reject)
+	 */
+	GET_DATA(payload) {
+		return new Promise((resolve, reject) => {
+			const { page, pageSize, properties, sort, queries, operator } = payload;
+
+			console.log("GET_DATA", payload);
+
+			const newQueries = queries.map(query => {
+				const { data, filter, filterType } = query;
+				const newQuery = {};
+				if (filterType === "regex") {
+					newQuery[filter.property] = new RegExp(`${data.slice(1, data.length - 1)}`, "i");
+				} else if (filterType === "contains") {
+					newQuery[filter.property] = new RegExp(`${data.replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&")}`, "i");
+				} else if (filterType === "exact") {
+					newQuery[filter.property] = data.toString();
+				}
+				return newQuery;
+			});
+
+			const queryObject = {};
+			if (newQueries.length > 0) {
+				if (operator === "and") queryObject.$and = newQueries;
+				else if (operator === "or") queryObject.$or = newQueries;
+				else if (operator === "nor") queryObject.$nor = newQueries;
+			}
+
+			async.waterfall(
+				[
+					next => {
+						SongsModule.SongModel.find(queryObject).count((err, count) => {
+							next(err, count);
+						});
+					},
+
+					(count, next) => {
+						SongsModule.SongModel.find(queryObject)
+							.sort(sort)
+							.skip(pageSize * (page - 1))
+							.limit(pageSize)
+							.select(properties.join(" "))
+							.exec((err, songs) => {
+								next(err, count, songs);
+							});
+					}
+				],
+				(err, count, songs) => {
+					if (err && err !== true) return reject(new Error(err));
+					return resolve({ data: songs, count });
+				}
+			);
+		});
+	}
+
+	/**
 	 * Makes sure that if a song is not currently in the songs db, to add it
 	 *
 	 * @param {object} payload - an object containing the payload
@@ -729,7 +794,7 @@ class _SongsModule extends CoreClass {
 				[
 					next => {
 						playlistModel.countDocuments(
-							{ songs: { $elemMatch: { youtubeId: payload.youtubeId } }, displayName: "Liked Songs" },
+							{ songs: { $elemMatch: { youtubeId: payload.youtubeId } }, type: "user-liked" },
 							(err, likes) => {
 								if (err) return next(err);
 								return next(null, likes);
@@ -739,7 +804,7 @@ class _SongsModule extends CoreClass {
 
 					(likes, next) => {
 						playlistModel.countDocuments(
-							{ songs: { $elemMatch: { youtubeId: payload.youtubeId } }, displayName: "Disliked Songs" },
+							{ songs: { $elemMatch: { youtubeId: payload.youtubeId } }, type: "user-disliked" },
 							(err, dislikes) => {
 								if (err) return next(err);
 								return next(err, { likes, dislikes });
@@ -763,6 +828,46 @@ class _SongsModule extends CoreClass {
 				(err, { likes, dislikes }) => {
 					if (err) return reject(new Error(err));
 					return resolve({ likes, dislikes });
+				}
+			);
+		});
+	}
+
+	/**
+	 * Recalculates dislikes and likes for all songs
+	 *
+	 * @returns {Promise} - returns a promise (resolve, reject)
+	 */
+	RECALCULATE_ALL_SONG_RATINGS() {
+		return new Promise((resolve, reject) => {
+			async.waterfall(
+				[
+					next => {
+						SongsModule.SongModel.find({}, { _id: true }, next);
+					},
+
+					(songs, next) => {
+						async.eachLimit(
+							songs,
+							2,
+							(song, next) => {
+								SongsModule.runJob("RECALCULATE_SONG_RATINGS", { songId: song._id }, this)
+									.then(() => {
+										next();
+									})
+									.catch(err => {
+										next(err);
+									});
+							},
+							err => {
+								next(err);
+							}
+						);
+					}
+				],
+				err => {
+					if (err) return reject(new Error(err));
+					return resolve();
 				}
 			);
 		});

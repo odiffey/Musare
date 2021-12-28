@@ -466,7 +466,7 @@
 						>
 							<i class="material-icons">check_circle</i>
 						</button>
-						<confirm
+						<quick-confirm
 							v-if="song.status === 'verified'"
 							placement="left"
 							@confirm="unverify(song._id)"
@@ -478,8 +478,8 @@
 							>
 								<i class="material-icons">cancel</i>
 							</button>
-						</confirm>
-						<confirm
+						</quick-confirm>
+						<quick-confirm
 							v-if="song.status !== 'hidden'"
 							placement="left"
 							@confirm="hide(song._id)"
@@ -491,7 +491,7 @@
 							>
 								<i class="material-icons">visibility_off</i>
 							</button>
-						</confirm>
+						</quick-confirm>
 						<button
 							v-if="song.status === 'hidden'"
 							class="button is-success"
@@ -501,7 +501,7 @@
 						>
 							<i class="material-icons">visibility</i>
 						</button>
-						<!-- <confirm placement="left" @confirm="remove(song._id)">
+						<!-- <quick-confirm placement="left" @confirm="remove(song._id)">
 						<button
 							class="button is-danger"
 							content="Remove Song"
@@ -509,7 +509,7 @@
 						>
 							<i class="material-icons">delete</i>
 						</button>
-					</confirm> -->
+					</quick-confirm> -->
 					</div>
 				</div>
 			</template>
@@ -542,7 +542,7 @@ import ws from "@/ws";
 import validation from "@/validation";
 import keyboardShortcuts from "@/keyboardShortcuts";
 
-import Confirm from "@/components/Confirm.vue";
+import QuickConfirm from "@/components/QuickConfirm.vue";
 import Modal from "../../Modal.vue";
 import FloatingBox from "../../FloatingBox.vue";
 import SaveButton from "../../SaveButton.vue";
@@ -557,7 +557,7 @@ export default {
 		Modal,
 		FloatingBox,
 		SaveButton,
-		Confirm,
+		QuickConfirm,
 		Discogs,
 		Reports,
 		Youtube,
@@ -2007,10 +2007,6 @@ export default {
 
 	#tabs-container {
 		width: 376px;
-		background-color: var(--light-grey);
-		border: 1px rgba(163, 224, 255, 0.75) solid;
-		border-radius: 5px;
-		overflow: auto;
 
 		#tab-selection {
 			display: flex;
@@ -2039,8 +2035,10 @@ export default {
 		}
 		.tab {
 			border: 1px solid var(--light-grey-3);
-			border-radius: 3px;
+			border-radius: 0 0 5px 5px;
 			padding: 15px;
+			height: calc(100% - 32px);
+			overflow: auto;
 		}
 	}
 }

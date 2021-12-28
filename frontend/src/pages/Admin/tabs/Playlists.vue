@@ -3,69 +3,13 @@
 		<page-metadata title="Admin | Playlists" />
 		<div class="container">
 			<div class="button-row">
-				<confirm
-					placement="bottom"
-					@confirm="deleteOrphanedStationPlaylists()"
-				>
-					<button class="button is-danger">
-						Delete orphaned station playlists
-					</button>
-				</confirm>
-				<confirm
-					placement="bottom"
-					@confirm="deleteOrphanedGenrePlaylists()"
-				>
-					<button class="button is-danger">
-						Delete orphaned genre playlists
-					</button>
-				</confirm>
-				<confirm
-					placement="bottom"
-					@confirm="deleteOrphanedArtistPlaylists()"
-				>
-					<button class="button is-danger">
-						Delete orphaned artist playlists
-					</button>
-				</confirm>
-				<confirm
-					placement="bottom"
-					@confirm="requestOrphanedPlaylistSongs()"
-				>
-					<button class="button is-danger">
-						Request orphaned playlist songs
-					</button>
-				</confirm>
-				<confirm
-					placement="bottom"
-					@confirm="clearAndRefillAllStationPlaylists()"
-				>
-					<button class="button is-danger">
-						Clear and refill all station playlists
-					</button>
-				</confirm>
-				<confirm
-					placement="bottom"
-					@confirm="clearAndRefillAllGenrePlaylists()"
-				>
-					<button class="button is-danger">
-						Clear and refill all genre playlists
-					</button>
-				</confirm>
-				<confirm
-					placement="bottom"
-					@confirm="clearAndRefillAllArtistPlaylists()"
-				>
-					<button class="button is-danger">
-						Clear and refill all artist playlists
-					</button>
-				</confirm>
+				<run-job-dropdown :jobs="jobs" />
 			</div>
 			<table class="table">
 				<thead>
 					<tr>
 						<td>Display name</td>
 						<td>Type</td>
-						<td>Is user modifiable</td>
 						<td>Privacy</td>
 						<td>Songs #</td>
 						<td>Playlist length</td>
@@ -80,7 +24,6 @@
 					<tr v-for="playlist in playlists" :key="playlist._id">
 						<td>{{ playlist.displayName }}</td>
 						<td>{{ playlist.type }}</td>
-						<td>{{ playlist.isUserModifiable }}</td>
 						<td>{{ playlist.privacy }}</td>
 						<td>{{ playlist.songs.length }}</td>
 						<td>{{ totalLengthForPlaylist(playlist.songs) }}</td>
@@ -119,8 +62,7 @@
 import { mapState, mapActions, mapGetters } from "vuex";
 import { defineAsyncComponent } from "vue";
 
-import Toast from "toasters";
-import Confirm from "@/components/Confirm.vue";
+import RunJobDropdown from "@/components/RunJobDropdown.vue";
 
 import UserIdToUsername from "@/components/UserIdToUsername.vue";
 
@@ -139,11 +81,49 @@ export default {
 		EditSong: defineAsyncComponent(() =>
 			import("@/components/modals/EditSong")
 		),
-		Confirm
+		RunJobDropdown
 	},
 	data() {
 		return {
-			utils
+			utils,
+			jobs: [
+				{
+					name: "Delete orphaned station playlists",
+					socket: "playlists.deleteOrphanedStationPlaylists"
+				},
+				{
+					name: "Delete orphaned genre playlists",
+					socket: "playlists.deleteOrphanedGenrePlaylists"
+				},
+				{
+					name: "Delete orphaned artist playlists",
+					socket: "playlists.deleteOrphanedArtistPlaylists"
+				},
+				{
+					name: "Request orphaned playlist songs",
+					socket: "playlists.requestOrphanedPlaylistSongs"
+				},
+				{
+					name: "Clear and refill all station playlists",
+					socket: "playlists.clearAndRefillAllStationPlaylists"
+				},
+				{
+					name: "Clear and refill all genre playlists",
+					socket: "playlists.clearAndRefillAllGenrePlaylists"
+				},
+				{
+					name: "Clear and refill all artist playlists",
+					socket: "playlists.clearAndRefillAllArtistPlaylists"
+				},
+				{
+					name: "Create missing genre playlists",
+					socket: "playlists.createMissingGenrePlaylists"
+				},
+				{
+					name: "Create missing artist playlists",
+					socket: "playlists.createMissingArtistPlaylists"
+				}
+			]
 		};
 	},
 	computed: {
@@ -231,84 +211,6 @@ export default {
 				length += song.duration;
 			});
 			return this.utils.formatTimeLong(length);
-		},
-		deleteOrphanedStationPlaylists() {
-			this.socket.dispatch(
-				"playlists.deleteOrphanedStationPlaylists",
-				res => {
-					if (res.status === "success") new Toast(res.message);
-					else new Toast(`Error: ${res.message}`);
-				}
-			);
-		},
-		deleteOrphanedGenrePlaylists() {
-			this.socket.dispatch(
-				"playlists.deleteOrphanedGenrePlaylists",
-				res => {
-					if (res.status === "success") new Toast(res.message);
-					else new Toast(`Error: ${res.message}`);
-				}
-			);
-		},
-		deleteOrphanedArtistPlaylists() {
-			this.socket.dispatch(
-				"playlists.deleteOrphanedArtistPlaylists",
-				res => {
-					if (res.status === "success") new Toast(res.message);
-					else new Toast(`Error: ${res.message}`);
-				}
-			);
-		},
-		requestOrphanedPlaylistSongs() {
-			this.socket.dispatch(
-				"playlists.requestOrphanedPlaylistSongs",
-				res => {
-					if (res.status === "success") new Toast(res.message);
-					else new Toast(`Error: ${res.message}`);
-				}
-			);
-		},
-		clearAndRefillAllStationPlaylists() {
-			this.socket.dispatch(
-				"playlists.clearAndRefillAllStationPlaylists",
-				res => {
-					if (res.status === "success")
-						new Toast({ content: res.message, timeout: 4000 });
-					else
-						new Toast({
-							content: `Error: ${res.message}`,
-							timeout: 4000
-						});
-				}
-			);
-		},
-		clearAndRefillAllGenrePlaylists() {
-			this.socket.dispatch(
-				"playlists.clearAndRefillAllGenrePlaylists",
-				res => {
-					if (res.status === "success")
-						new Toast({ content: res.message, timeout: 4000 });
-					else
-						new Toast({
-							content: `Error: ${res.message}`,
-							timeout: 4000
-						});
-				}
-			);
-		},
-		clearAndRefillAllArtistPlaylists() {
-			this.socket.dispatch(
-				"playlists.clearAndRefillAllArtistPlaylists",
-				res => {
-					if (res.status === "success")
-						new Toast({ content: res.message, timeout: 4000 });
-					else
-						new Toast({
-							content: `Error: ${res.message}`,
-							timeout: 4000
-						});
-				}
-			);
 		},
 		...mapActions("modalVisibility", ["openModal"]),
 		...mapActions("user/playlists", ["editPlaylist"]),

@@ -4,42 +4,23 @@
 		<div class="tabs is-centered">
 			<ul>
 				<li
-					:class="{ 'is-active': currentTab == 'hiddensongs' }"
-					ref="hiddensongs-tab"
-					@click="showTab('hiddensongs')"
+					:class="{ 'is-active': currentTab == 'test' }"
+					ref="test-tab"
+					@click="showTab('test')"
 				>
-					<router-link
-						class="tab hiddensongs"
-						to="/admin/hiddensongs"
-					>
+					<router-link class="tab test" to="/admin/test">
 						<i class="material-icons">music_note</i>
-						<span>&nbsp;Hidden Songs</span>
+						<span>&nbsp;Test</span>
 					</router-link>
 				</li>
 				<li
-					:class="{ 'is-active': currentTab == 'unverifiedsongs' }"
-					ref="unverifiedsongs-tab"
-					@click="showTab('unverifiedsongs')"
+					:class="{ 'is-active': currentTab == 'songs' }"
+					ref="songs-tab"
+					@click="showTab('songs')"
 				>
-					<router-link
-						class="tab unverifiedsongs"
-						to="/admin/unverifiedsongs"
-					>
-						<i class="material-icons">unpublished</i>
-						<span>&nbsp;Unverified Songs</span>
-					</router-link>
-				</li>
-				<li
-					:class="{ 'is-active': currentTab == 'verifiedsongs' }"
-					ref="verifiedsongs-tab"
-					@click="showTab('verifiedsongs')"
-				>
-					<router-link
-						class="tab verifiedsongs"
-						to="/admin/verifiedsongs"
-					>
-						<i class="material-icons">check_circle</i>
-						<span>&nbsp;Verified Songs</span>
+					<router-link class="tab songs" to="/admin/songs">
+						<i class="material-icons">music_note</i>
+						<span>&nbsp;Songs</span>
 					</router-link>
 				</li>
 				<li
@@ -119,9 +100,8 @@
 		</div>
 
 		<div class="admin-container">
-			<unverified-songs v-if="currentTab == 'unverifiedsongs'" />
-			<verified-songs v-if="currentTab == 'verifiedsongs'" />
-			<hidden-songs v-if="currentTab == 'hiddensongs'" />
+			<test v-if="currentTab == 'test'" />
+			<songs v-if="currentTab == 'songs'" />
 			<stations v-if="currentTab == 'stations'" />
 			<playlists v-if="currentTab == 'playlists'" />
 			<reports v-if="currentTab == 'reports'" />
@@ -146,15 +126,8 @@ export default {
 	components: {
 		MainHeader,
 		MainFooter,
-		UnverifiedSongs: defineAsyncComponent(() =>
-			import("./tabs/UnverifiedSongs.vue")
-		),
-		VerifiedSongs: defineAsyncComponent(() =>
-			import("./tabs/VerifiedSongs.vue")
-		),
-		HiddenSongs: defineAsyncComponent(() =>
-			import("./tabs/HiddenSongs.vue")
-		),
+		Test: defineAsyncComponent(() => import("./tabs/Test.vue")),
+		Songs: defineAsyncComponent(() => import("./tabs/Songs.vue")),
 		Stations: defineAsyncComponent(() => import("./tabs/Stations.vue")),
 		Playlists: defineAsyncComponent(() => import("./tabs/Playlists.vue")),
 		Reports: defineAsyncComponent(() => import("./tabs/Reports.vue")),
@@ -187,14 +160,11 @@ export default {
 	methods: {
 		changeTab(path) {
 			switch (path) {
-				case "/admin/unverifiedsongs":
-					this.showTab("unverifiedsongs");
+				case "/admin/test":
+					this.showTab("test");
 					break;
-				case "/admin/verifiedsongs":
-					this.showTab("verifiedsongs");
-					break;
-				case "/admin/hiddensongs":
-					this.showTab("hiddensongs");
+				case "/admin/songs":
+					this.showTab("songs");
 					break;
 				case "/admin/stations":
 					this.showTab("stations");
@@ -218,7 +188,17 @@ export default {
 					this.showTab("punishments");
 					break;
 				default:
-					this.showTab("verifiedsongs");
+					if (path.startsWith("/admin")) {
+						if (localStorage.getItem("lastAdminPage")) {
+							this.$router.push(
+								`/admin/${localStorage.getItem(
+									"lastAdminPage"
+								)}`
+							);
+						} else {
+							this.$router.push(`/admin/songs`);
+						}
+					}
 			}
 		},
 		showTab(tab) {
@@ -228,6 +208,7 @@ export default {
 					block: "nearest"
 				});
 			this.currentTab = tab;
+			localStorage.setItem("lastAdminPage", tab);
 		}
 	}
 };
@@ -238,6 +219,7 @@ export default {
 	top: 102px !important;
 }
 
+.main-container .admin-tab,
 .main-container .container {
 	.button-row {
 		display: flex;
@@ -254,6 +236,12 @@ export default {
 			}
 		}
 	}
+}
+
+.main-container .admin-container .admin-tab {
+	max-width: 1900px;
+	margin: 0 auto;
+	padding: 0 10px;
 }
 </style>
 
@@ -284,9 +272,10 @@ export default {
 
 .main-container {
 	height: auto;
+
 	.admin-container {
 		flex: 1 0 auto;
-		margin-bottom: 10px;
+		margin-bottom: 20px;
 	}
 }
 
@@ -311,17 +300,9 @@ export default {
 		border-bottom: 1px solid var(--light-grey-2);
 	}
 
-	.unverifiedsongs {
-		color: var(--teal);
-		border-color: var(--teal);
-	}
-	.verifiedsongs {
+	.songs {
 		color: var(--primary-color);
 		border-color: var(--primary-color);
-	}
-	.hiddensongs {
-		color: var(--grey);
-		border-color: var(--grey);
 	}
 	.stations {
 		color: var(--purple);

@@ -3,13 +3,15 @@ import { createApp } from "vue";
 
 import VueTippy, { Tippy } from "vue-tippy";
 import { createRouter, createWebHistory } from "vue-router";
+import "lofig";
 
 import ws from "@/ws";
+import ms from "@/ms";
 import store from "./store";
 
 import AppComponent from "./App.vue";
 
-const REQUIRED_CONFIG_VERSION = 8;
+const REQUIRED_CONFIG_VERSION = 9;
 
 lofig.folder = "../config/default.json";
 
@@ -225,6 +227,8 @@ app.use(router);
 
 	const websocketsDomain = await lofig.get("backend.websocketsDomain");
 	ws.init(websocketsDomain);
+
+	if (await lofig.get("siteSettings.mediasession")) ms.init();
 
 	ws.socket.on("ready", res => {
 		const { loggedIn, role, username, userId, email } = res.data;

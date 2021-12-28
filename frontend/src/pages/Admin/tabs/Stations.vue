@@ -9,11 +9,7 @@
 				>
 					Create Station
 				</button>
-				<confirm placement="bottom" @confirm="clearEveryStationQueue()">
-					<button class="button is-danger">
-						Clear every station queue
-					</button>
-				</confirm>
+				<run-job-dropdown :jobs="jobs" />
 			</div>
 			<table class="table">
 				<thead>
@@ -69,9 +65,9 @@
 							<a class="button is-info" @click="manage(station)"
 								>Manage</a
 							>
-							<confirm @confirm="removeStation(index)">
+							<quick-confirm @confirm="removeStation(index)">
 								<a class="button is-danger">Remove</a>
-							</confirm>
+							</quick-confirm>
 						</td>
 					</tr>
 				</tbody>
@@ -98,7 +94,8 @@ import { defineAsyncComponent } from "vue";
 
 import Toast from "toasters";
 import UserIdToUsername from "@/components/UserIdToUsername.vue";
-import Confirm from "@/components/Confirm.vue";
+import QuickConfirm from "@/components/QuickConfirm.vue";
+import RunJobDropdown from "@/components/RunJobDropdown.vue";
 import ws from "@/ws";
 
 export default {
@@ -125,11 +122,18 @@ export default {
 			import("@/components/modals/CreateStation.vue")
 		),
 		UserIdToUsername,
-		Confirm
+		QuickConfirm,
+		RunJobDropdown
 	},
 	data() {
 		return {
-			editingStationId: ""
+			editingStationId: "",
+			jobs: [
+				{
+					name: "Clear every station queue",
+					socket: "stations.clearEveryStationQueue"
+				}
+			]
 		};
 	},
 	computed: {
@@ -165,12 +169,6 @@ export default {
 		manage(station) {
 			this.editingStationId = station._id;
 			this.openModal("manageStation");
-		},
-		clearEveryStationQueue() {
-			this.socket.dispatch("stations.clearEveryStationQueue", res => {
-				if (res.status === "success") new Toast(res.message);
-				else new Toast(`Error: ${res.message}`);
-			});
 		},
 		init() {
 			this.socket.dispatch("stations.index", res => {

@@ -1,6 +1,14 @@
 <template>
 	<div class="settings-tab section">
-		<div v-if="isEditable()">
+		<div
+			v-if="
+				isEditable() &&
+				!(
+					playlist.type === 'user-liked' ||
+					playlist.type === 'user-disliked'
+				)
+			"
+		>
 			<label class="label"> Change display name </label>
 			<div class="control is-grouped input-with-button">
 				<p class="control is-expanded">
@@ -25,7 +33,7 @@
 
 		<div
 			v-if="
-				userId === playlist.createdBy ||
+				isEditable() ||
 				((playlist.type === 'genre' || playlist.type === 'artist') &&
 					isAdmin())
 			"
@@ -76,7 +84,9 @@ export default {
 	methods: {
 		isEditable() {
 			return (
-				this.playlist.isUserModifiable &&
+				(this.playlist.type === "user" ||
+					this.playlist.type === "user-liked" ||
+					this.playlist.type === "user-disliked") &&
 				(this.userId === this.playlist.createdBy ||
 					this.userRole === "admin")
 			);
