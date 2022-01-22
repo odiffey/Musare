@@ -76,12 +76,18 @@
 				</div>
 			</template>
 			<template #footer>
-				<confirm @confirm="removeSessions()">
+				<quick-confirm @confirm="resendVerificationEmail()">
+					<a class="button is-warning"> Resend verification email </a>
+				</quick-confirm>
+				<quick-confirm @confirm="requestPasswordReset()">
+					<a class="button is-warning"> Request password reset </a>
+				</quick-confirm>
+				<quick-confirm @confirm="removeSessions()">
 					<a class="button is-warning"> Remove all sessions </a>
-				</confirm>
-				<confirm @confirm="removeAccount()">
+				</quick-confirm>
+				<quick-confirm @confirm="removeAccount()">
 					<a class="button is-danger"> Remove account </a>
-				</confirm>
+				</quick-confirm>
 			</template>
 		</modal>
 	</div>
@@ -94,10 +100,10 @@ import Toast from "toasters";
 import validation from "@/validation";
 import ws from "@/ws";
 import Modal from "../Modal.vue";
-import Confirm from "@/components/Confirm.vue";
+import QuickConfirm from "@/components/QuickConfirm.vue";
 
 export default {
-	components: { Modal, Confirm },
+	components: { Modal, QuickConfirm },
 	props: {
 		userId: { type: String, default: "" },
 		sector: { type: String, default: "admin" }
@@ -227,6 +233,24 @@ export default {
 				this.user._id,
 				this.ban.reason,
 				this.ban.expiresAt,
+				res => {
+					new Toast(res.message);
+				}
+			);
+		},
+		resendVerificationEmail() {
+			this.socket.dispatch(
+				`users.resendVerifyEmail`,
+				this.user._id,
+				res => {
+					new Toast(res.message);
+				}
+			);
+		},
+		requestPasswordReset() {
+			this.socket.dispatch(
+				`users.adminRequestPasswordReset`,
+				this.user._id,
 				res => {
 					new Toast(res.message);
 				}

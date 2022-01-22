@@ -305,19 +305,23 @@
 				<button class="button is-primary" @click="tryToAutoMove()">
 					Try to auto move
 				</button>
-				<button class="button is-primary" @click="editSongs()">
+				<button class="button is-primary" @click="startEditingSongs()">
 					Edit songs
 				</button>
-				<button
-					:class="{
-						button: true,
-						'is-success': prefillDiscogs,
-						'is-danger': !prefillDiscogs
-					}"
-					@click="togglePrefillDiscogs()"
-				>
-					Prefill Discogs
-				</button>
+				<p class="is-expanded checkbox-control">
+					<label class="switch">
+						<input
+							type="checkbox"
+							id="prefill-discogs"
+							v-model="localPrefillDiscogs"
+						/>
+						<span class="slider round"></span>
+					</label>
+
+					<label for="prefill-discogs">
+						<p>Prefill Discogs</p>
+					</label>
+				</p>
 			</template>
 		</modal>
 	</div>
@@ -344,7 +348,7 @@ export default {
 			isImportingPlaylist: false,
 			trackSongs: [],
 			songsToEdit: [],
-			currentEditSongIndex: 0,
+			// currentEditSongIndex: 0,
 			search: {
 				playlist: {
 					query: ""
@@ -371,6 +375,17 @@ export default {
 				);
 			}
 		},
+		localPrefillDiscogs: {
+			get() {
+				return this.$store.state.modals.importAlbum.prefillDiscogs;
+			},
+			set(prefillDiscogs) {
+				this.$store.commit(
+					"modals/importAlbum/updatePrefillDiscogs",
+					prefillDiscogs
+				);
+			}
+		},
 		...mapState("modals/importAlbum", {
 			discogsTab: state => state.discogsTab,
 			discogsAlbum: state => state.discogsAlbum,
@@ -383,13 +398,6 @@ export default {
 		...mapGetters({
 			socket: "websockets/getSocket"
 		})
-	},
-	watch: {
-		/* eslint-disable */
-		"modals.editSong": function (value) {
-			if (!value) this.editNextSong();
-		}
-		/* eslint-enable */
 	},
 	mounted() {
 		ws.onConnect(this.init);
@@ -408,8 +416,7 @@ export default {
 		init() {
 			this.socket.dispatch("apis.joinRoom", "import-album");
 		},
-		editSongs() {
-			this.updateEditingSongs(true);
+		startEditingSongs() {
 			this.songsToEdit = [];
 			this.trackSongs.forEach((songs, index) => {
 				songs.forEach(song => {
@@ -421,38 +428,34 @@ export default {
 					delete discogsAlbum.expanded;
 					delete discogsAlbum.gotMoreInfo;
 
-					this.songsToEdit.push({
+					const songToEdit = {
 						songId: song._id,
-						discogs: discogsAlbum
-					});
+						prefill: {
+							discogs: discogsAlbum
+						}
+					};
+
+					if (this.prefillDiscogs) {
+						songToEdit.prefill.title = discogsAlbum.track.title;
+						songToEdit.prefill.thumbnail =
+							discogsAlbum.album.albumArt;
+						songToEdit.prefill.genres = JSON.parse(
+							JSON.stringify(discogsAlbum.album.genres)
+						);
+						songToEdit.prefill.artists = JSON.parse(
+							JSON.stringify(discogsAlbum.album.artists)
+						);
+					}
+
+					this.songsToEdit.push(songToEdit);
 				});
 			});
-			this.editNextSong();
-		},
-		editNextSong() {
-			if (this.editingSongs) {
-				setTimeout(() => {
-					const song = {
-						_id: this.songsToEdit[this.currentEditSongIndex].songId,
-						discogs:
-							this.songsToEdit[this.currentEditSongIndex].discogs
-					};
-					if (song.discogs && this.prefillDiscogs)
-						song.prefill = {
-							title: song.discogs.track.title,
-							thumbnail: song.discogs.album.albumArt,
-							genres: JSON.parse(
-								JSON.stringify(song.discogs.album.genres)
-							),
-							artists: JSON.parse(
-								JSON.stringify(song.discogs.album.artists)
-							)
-						};
-					console.log(song);
-					this.editSong(song);
-					this.currentEditSongIndex += 1;
-					this.openModal("editSong");
-				}, 500);
+
+			if (this.songsToEdit.length === 0)
+				new Toast("You can't edit 0 songs.");
+			else {
+				this.editSongs(this.songsToEdit);
+				this.openModal("editSongs");
 			}
 		},
 		log(evt) {
@@ -493,9 +496,7 @@ export default {
 				true,
 				res => {
 					this.isImportingPlaylist = false;
-					const songs = res.songs.filter(
-						song => song.status !== "verified"
-					);
+					const songs = res.songs.filter(song => !song.verified);
 					const songsAlreadyVerified =
 						res.songs.length - songs.length;
 					this.setPlaylistSongs(songs);
@@ -643,9 +644,11 @@ export default {
 		},
 		updateTrackSong(updatedSong) {
 			this.updatePlaylistSong(updatedSong);
-			this.trackSongs.forEach((song, index) => {
-				if (song[0]._id === updatedSong._id)
-					this.trackSongs[index][0] = updatedSong;
+			this.trackSongs.forEach((songs, indexA) => {
+				songs.forEach((song, indexB) => {
+					if (song._id === updatedSong._id)
+						this.trackSongs[indexA][indexB] = updatedSong;
+				});
 			});
 		},
 		...mapActions({
@@ -667,7 +670,7 @@ export default {
 			"togglePrefillDiscogs",
 			"updatePlaylistSong"
 		]),
-		...mapActions("modals/editSong", ["editSong"]),
+		...mapActions("modals/editSongs", ["editSongs"]),
 		...mapActions("modalVisibility", ["closeModal", "openModal"])
 	}
 };
@@ -810,7 +813,6 @@ export default {
 	.search-discogs-album {
 		background-color: var(--light-grey);
 		border: 1px rgba(143, 40, 140, 0.75) solid;
-
 		> label {
 			margin-top: 12px;
 		}

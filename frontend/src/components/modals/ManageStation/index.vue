@@ -2,14 +2,16 @@
 	<modal
 		v-if="station"
 		:title="
-			!isOwnerOrAdmin() && station.partyMode
+			sector === 'home' && !isOwnerOrAdmin()
+				? 'View Queue'
+				: !isOwnerOrAdmin() && station.partyMode
 				? 'Add Song to Queue'
 				: 'Manage Station'
 		"
 		:style="`--primary-color: var(--${station.theme})`"
 		class="manage-station-modal"
-		:wide="true"
-		:split="true"
+		:size="isOwnerOrAdmin() || sector !== 'home' ? 'wide' : null"
+		:split="isOwnerOrAdmin() || sector !== 'home'"
 	>
 		<template #body v-if="station && station._id">
 			<div class="left-section">
@@ -122,7 +124,7 @@
 						>
 							pause
 						</i>
-						<confirm
+						<quick-confirm
 							v-if="isOwnerOrAdmin()"
 							@confirm="skipStation()"
 						>
@@ -133,7 +135,7 @@
 							>
 								skip_next
 							</i>
-						</confirm>
+						</quick-confirm>
 					</div>
 					<hr class="section-horizontal-rule" />
 					<song-item
@@ -177,14 +179,14 @@
 				<span class="optional-desktop-only-text"> Request Song </span>
 			</button>
 			<div v-if="isOwnerOrAdmin()" class="right">
-				<confirm @confirm="clearAndRefillStationQueue()">
+				<quick-confirm @confirm="clearAndRefillStationQueue()">
 					<a class="button is-danger">
 						Clear and refill station queue
 					</a>
-				</confirm>
-				<confirm @confirm="removeStation()">
+				</quick-confirm>
+				<quick-confirm @confirm="removeStation()">
 					<button class="button is-danger">Delete station</button>
-				</confirm>
+				</quick-confirm>
 			</div>
 		</template>
 	</modal>
@@ -196,7 +198,7 @@ import { mapState, mapGetters, mapActions } from "vuex";
 import Toast from "toasters";
 import ws from "@/ws";
 
-import Confirm from "@/components/Confirm.vue";
+import QuickConfirm from "@/components/QuickConfirm.vue";
 import Queue from "@/components/Queue.vue";
 import SongItem from "@/components/SongItem.vue";
 import Modal from "../../Modal.vue";
@@ -209,7 +211,7 @@ import Blacklist from "./Tabs/Blacklist.vue";
 export default {
 	components: {
 		Modal,
-		Confirm,
+		QuickConfirm,
 		Queue,
 		SongItem,
 		Settings,
@@ -245,34 +247,46 @@ export default {
 		ws.onConnect(this.init);
 
 		this.socket.on(
-			"event:station.queue.updated",
-			res => this.updateSongsList(res.data.queue),
+			"event:manageStation.queue.updated",
+			res => {
+				if (res.data.stationId === this.station._id)
+					this.updateSongsList(res.data.queue);
+			},
 			{ modal: "manageStation" }
 		);
 
 		this.socket.on(
-			"event:station.queue.song.repositioned",
-			res => this.repositionSongInList(res.data.song),
+			"event:manageStation.queue.song.repositioned",
+			res => {
+				if (res.data.stationId === this.station._id)
+					this.repositionSongInList(res.data.song);
+			},
 			{ modal: "manageStation" }
 		);
 
 		this.socket.on(
 			"event:station.pause",
-			() => this.updateStationPaused(true),
+			res => {
+				if (res.data.stationId === this.station._id)
+					this.updateStationPaused(true);
+			},
 			{ modal: "manageStation" }
 		);
 
 		this.socket.on(
 			"event:station.resume",
-			() => this.updateStationPaused(false),
+			res => {
+				if (res.data.stationId === this.station._id)
+					this.updateStationPaused(false);
+			},
 			{ modal: "manageStation" }
 		);
 
 		this.socket.on(
 			"event:station.nextSong",
 			res => {
-				const { currentSong } = res.data;
-				this.updateCurrentSong(currentSong || {});
+				if (res.data.stationId === this.station._id)
+					this.updateCurrentSong(res.data.currentSong || {});
 			},
 			{ modal: "manageStation" }
 		);
@@ -686,6 +700,9 @@ export default {
 				margin-bottom: 10px;
 			}
 		}
+	}
+	&.modal-wide .left-section .section:first-child {
+		padding: 0 15px 15px !important;
 	}
 }
 </style>

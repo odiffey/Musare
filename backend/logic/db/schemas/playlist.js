@@ -2,7 +2,6 @@ import mongoose from "mongoose";
 
 export default {
 	displayName: { type: String, min: 2, max: 96, required: true },
-	isUserModifiable: { type: Boolean, default: true, required: true },
 	songs: [
 		{
 			_id: { type: mongoose.Schema.Types.ObjectId, required: false },
@@ -18,6 +17,6 @@ export default {
 	createdAt: { type: Date, default: Date.now, required: true },
 	createdFor: { type: String },
 	privacy: { type: String, enum: ["public", "private"], default: "private" },
-	type: { type: String, enum: ["user", "genre", "station", "artist"], required: true },
-	documentVersion: { type: Number, default: 4, required: true }
+	type: { type: String, enum: ["user", "user-liked", "user-disliked", "genre", "artist", "station"], required: true },
+	documentVersion: { type: Number, default: 6, required: true }
 };
