@@ -5,13 +5,6 @@
 			<div class="button-row">
 				<button
 					class="button is-primary"
-					@click="toggleKeyboardShortcutsHelper"
-					@dblclick="resetKeyboardShortcutsHelper"
-				>
-					Keyboard shortcuts helper
-				</button>
-				<button
-					class="button is-primary"
 					@click="openModal('requestSong')"
 				>
 					Request song
@@ -30,7 +23,80 @@
 				:filters="filters"
 				data-action="songs.getData"
 				name="admin-songs"
+				:events="events"
 			>
+				<template #column-options="slotProps">
+					<div class="row-options">
+						<button
+							class="
+								button
+								is-primary
+								icon-with-button
+								material-icons
+							"
+							@click="editOne(slotProps.item)"
+							:disabled="slotProps.item.removed"
+							content="Edit Song"
+							v-tippy
+						>
+							edit
+						</button>
+						<quick-confirm
+							v-if="slotProps.item.verified"
+							@confirm="unverifyOne(slotProps.item._id)"
+						>
+							<button
+								class="
+									button
+									is-danger
+									icon-with-button
+									material-icons
+								"
+								:disabled="slotProps.item.removed"
+								content="Unverify Song"
+								v-tippy
+							>
+								cancel
+							</button>
+						</quick-confirm>
+						<button
+							v-else
+							class="
+								button
+								is-success
+								icon-with-button
+								material-icons
+							"
+							@click="verifyOne(slotProps.item._id)"
+							:disabled="slotProps.item.removed"
+							content="Verify Song"
+							v-tippy
+						>
+							check_circle
+						</button>
+						<button
+							class="
+								button
+								is-danger
+								icon-with-button
+								material-icons
+							"
+							@click.prevent="
+								confirmAction({
+									message:
+										'Removing this song will remove it from all playlists and cause a ratings recalculation.',
+									action: 'deleteOne',
+									params: slotProps.item._id
+								})
+							"
+							:disabled="slotProps.item.removed"
+							content="Delete Song"
+							v-tippy
+						>
+							delete_forever
+						</button>
+					</div>
+				</template>
 				<template #column-thumbnailImage="slotProps">
 					<img
 						class="song-thumbnail"
@@ -59,6 +125,11 @@
 						slotProps.item.genres.join(", ")
 					}}</span>
 				</template>
+				<template #column-tags="slotProps">
+					<span :title="slotProps.item.tags.join(', ')">{{
+						slotProps.item.tags.join(", ")
+					}}</span>
+				</template>
 				<template #column-likes="slotProps">
 					<span :title="slotProps.item.likes">{{
 						slotProps.item.likes
@@ -85,9 +156,19 @@
 						{{ slotProps.item.youtubeId }}
 					</a>
 				</template>
-				<template #column-status="slotProps">
-					<span :title="slotProps.item.status">{{
-						slotProps.item.status
+				<template #column-verified="slotProps">
+					<span :title="slotProps.item.verified">{{
+						slotProps.item.verified
+					}}</span>
+				</template>
+				<template #column-duration="slotProps">
+					<span :title="slotProps.item.duration">{{
+						slotProps.item.duration
+					}}</span>
+				</template>
+				<template #column-skipDuration="slotProps">
+					<span :title="slotProps.item.skipDuration">{{
+						slotProps.item.skipDuration
 					}}</span>
 				</template>
 				<template #column-requestedBy="slotProps">
@@ -96,13 +177,30 @@
 						:link="true"
 					/>
 				</template>
+				<template #column-requestedAt="slotProps">
+					<span :title="new Date(slotProps.item.requestedAt)">{{
+						getDateFormatted(slotProps.item.requestedAt)
+					}}</span>
+				</template>
+				<template #column-verifiedBy="slotProps">
+					<user-id-to-username
+						:user-id="slotProps.item.verifiedBy"
+						:link="true"
+					/>
+				</template>
+				<template #column-verifiedAt="slotProps">
+					<span :title="new Date(slotProps.item.verifiedAt)">{{
+						getDateFormatted(slotProps.item.verifiedAt)
+					}}</span>
+				</template>
 				<template #bulk-actions="slotProps">
-					<div class="song-bulk-actions">
+					<div class="bulk-actions">
 						<i
 							class="material-icons edit-songs-icon"
 							@click.prevent="editMany(slotProps.item)"
 							content="Edit Songs"
 							v-tippy
+							tabindex="0"
 						>
 							edit
 						</i>
@@ -111,22 +209,29 @@
 							@click.prevent="verifyMany(slotProps.item)"
 							content="Verify Songs"
 							v-tippy
+							tabindex="0"
 						>
 							check_circle
 						</i>
-						<i
-							class="material-icons unverify-songs-icon"
-							@click.prevent="unverifyMany(slotProps.item)"
-							content="Unverify Songs"
-							v-tippy
+						<quick-confirm
+							placement="left"
+							@confirm="unverifyMany(slotProps.item)"
+							tabindex="0"
 						>
-							cancel
-						</i>
+							<i
+								class="material-icons unverify-songs-icon"
+								content="Unverify Songs"
+								v-tippy
+							>
+								cancel
+							</i>
+						</quick-confirm>
 						<i
 							class="material-icons tag-songs-icon"
-							@click.prevent="tagMany(slotProps.item)"
-							content="Tag Songs"
+							@click.prevent="setTags(slotProps.item)"
+							content="Set Tags"
 							v-tippy
+							tabindex="0"
 						>
 							local_offer
 						</i>
@@ -135,6 +240,7 @@
 							@click.prevent="setArtists(slotProps.item)"
 							content="Set Artists"
 							v-tippy
+							tabindex="0"
 						>
 							group
 						</i>
@@ -143,103 +249,37 @@
 							@click.prevent="setGenres(slotProps.item)"
 							content="Set Genres"
 							v-tippy
+							tabindex="0"
 						>
 							theater_comedy
 						</i>
-						<quick-confirm
-							placement="left"
-							@confirm="deleteMany(slotProps.item)"
+						<i
+							class="material-icons delete-icon"
+							@click.prevent="
+								confirmAction({
+									message:
+										'Removing these songs will remove them from all playlists and cause a ratings recalculation.',
+									action: 'deleteMany',
+									params: slotProps.item
+								})
+							"
+							content="Delete Songs"
+							v-tippy
+							tabindex="0"
 						>
-							<i
-								class="material-icons delete-songs-icon"
-								content="Delete Songs"
-								v-tippy
-							>
-								delete_forever
-							</i>
-						</quick-confirm>
+							delete_forever
+						</i>
 					</div>
 				</template>
 			</advanced-table>
 		</div>
 		<import-album v-if="modals.importAlbum" />
-		<edit-song v-if="modals.editSong" song-type="songs" :key="song._id" />
+		<edit-song v-if="modals.editSong" song-type="songs" />
+		<edit-songs v-if="modals.editSongs" />
 		<report v-if="modals.report" />
 		<request-song v-if="modals.requestSong" />
-		<floating-box
-			id="keyboardShortcutsHelper"
-			ref="keyboardShortcutsHelper"
-		>
-			<template #body>
-				<div>
-					<div>
-						<span class="biggest"
-							><b>Keyboard shortcuts helper</b></span
-						>
-						<span
-							><b>Ctrl + /</b> - Toggles this keyboard shortcuts
-							helper</span
-						>
-						<span
-							><b>Ctrl + Shift + /</b> - Resets the position of
-							this keyboard shortcuts helper</span
-						>
-						<hr />
-					</div>
-					<div>
-						<span class="biggest"><b>Edit song modal</b></span>
-						<span class="bigger"><b>Navigation</b></span>
-						<span><b>Home</b> - Edit</span>
-						<span><b>End</b> - Edit</span>
-						<hr />
-					</div>
-					<div>
-						<span class="bigger"><b>Player controls</b></span>
-						<span class="bigger"
-							><i>Don't forget to turn off numlock!</i></span
-						>
-						<span><b>Numpad up/down</b> - Volume up/down 10%</span>
-						<span
-							><b>Ctrl + Numpad up/down</b> - Volume up/down
-							1%</span
-						>
-						<span><b>Numpad center</b> - Pause/resume</span>
-						<span><b>Ctrl + Numpad center</b> - Stop</span>
-						<span
-							><b>Numpad Right</b> - Skip to last 10 seconds</span
-						>
-						<hr />
-					</div>
-					<div>
-						<span class="bigger"><b>Form control</b></span>
-						<span
-							><b>Enter</b> - Executes blue button in that
-							input</span
-						>
-						<span
-							><b>Shift + Enter</b> - Executes purple/red button
-							in that input</span
-						>
-						<span
-							><b>Ctrl + Alt + D</b> - Fill in all Discogs
-							fields</span
-						>
-						<hr />
-					</div>
-					<div>
-						<span class="bigger"><b>Modal control</b></span>
-						<span><b>Ctrl + S</b> - Save</span>
-						<span><b>Ctrl + Alt + S</b> - Save and close</span>
-						<span
-							><b>Ctrl + Alt + V</b> - Save, verify and
-							close</span
-						>
-						<span><b>F4</b> - Close without saving</span>
-						<hr />
-					</div>
-				</div>
-			</template>
-		</floating-box>
+		<bulk-actions v-if="modals.bulkActions" :type="bulkActionsType" />
+		<confirm v-if="modals.confirm" @confirmed="handleConfirmed()" />
 	</div>
 </template>
 
@@ -249,11 +289,8 @@ import { defineAsyncComponent } from "vue";
 
 import Toast from "toasters";
 
-import keyboardShortcuts from "@/keyboardShortcuts";
-
 import AdvancedTable from "@/components/AdvancedTable.vue";
 import UserIdToUsername from "@/components/UserIdToUsername.vue";
-import FloatingBox from "@/components/FloatingBox.vue";
 import QuickConfirm from "@/components/QuickConfirm.vue";
 import RunJobDropdown from "@/components/RunJobDropdown.vue";
 
@@ -261,6 +298,9 @@ export default {
 	components: {
 		EditSong: defineAsyncComponent(() =>
 			import("@/components/modals/EditSong")
+		),
+		EditSongs: defineAsyncComponent(() =>
+			import("@/components/modals/EditSongs.vue")
 		),
 		Report: defineAsyncComponent(() =>
 			import("@/components/modals/Report.vue")
@@ -271,9 +311,14 @@ export default {
 		RequestSong: defineAsyncComponent(() =>
 			import("@/components/modals/RequestSong.vue")
 		),
+		BulkActions: defineAsyncComponent(() =>
+			import("@/components/modals/BulkActions.vue")
+		),
+		Confirm: defineAsyncComponent(() =>
+			import("@/components/modals/Confirm.vue")
+		),
 		AdvancedTable,
 		UserIdToUsername,
-		FloatingBox,
 		QuickConfirm,
 		RunJobDropdown
 	},
@@ -289,6 +334,16 @@ export default {
 				maxWidth: 600
 			},
 			columns: [
+				{
+					name: "options",
+					displayName: "Options",
+					properties: ["_id", "verified"],
+					sortable: false,
+					hidable: false,
+					resizable: false,
+					minWidth: 129,
+					defaultWidth: 129
+				},
 				{
 					name: "thumbnailImage",
 					displayName: "Thumb",
@@ -318,6 +373,12 @@ export default {
 					sortable: false
 				},
 				{
+					name: "tags",
+					displayName: "Tags",
+					properties: ["tags"],
+					sortable: false
+				},
+				{
 					name: "likes",
 					displayName: "Likes",
 					properties: ["likes"],
@@ -337,7 +398,7 @@ export default {
 				},
 				{
 					name: "_id",
-					displayName: "Musare ID",
+					displayName: "Song ID",
 					properties: ["_id"],
 					sortProperty: "_id",
 					minWidth: 215,
@@ -352,11 +413,10 @@ export default {
 					defaultWidth: 120
 				},
 				{
-					name: "status",
-					displayName: "Status",
-					properties: ["status"],
-					sortProperty: "status",
-					defaultVisibility: "hidden",
+					name: "verified",
+					displayName: "Verified",
+					properties: ["verified"],
+					sortProperty: "verified",
 					minWidth: 120,
 					defaultWidth: 120
 				},
@@ -368,17 +428,58 @@ export default {
 					defaultVisibility: "hidden"
 				},
 				{
+					name: "duration",
+					displayName: "Duration",
+					properties: ["duration"],
+					sortProperty: "duration",
+					defaultWidth: 200,
+					defaultVisibility: "hidden"
+				},
+				{
+					name: "skipDuration",
+					displayName: "Skip Duration",
+					properties: ["skipDuration"],
+					sortProperty: "skipDuration",
+					defaultWidth: 200,
+					defaultVisibility: "hidden"
+				},
+				{
 					name: "requestedBy",
 					displayName: "Requested By",
 					properties: ["requestedBy"],
 					sortProperty: "requestedBy",
-					defaultWidth: 200
+					defaultWidth: 200,
+					defaultVisibility: "hidden"
+				},
+				{
+					name: "requestedAt",
+					displayName: "Requested At",
+					properties: ["requestedAt"],
+					sortProperty: "requestedAt",
+					defaultWidth: 200,
+					defaultVisibility: "hidden"
+				},
+				{
+					name: "verifiedBy",
+					displayName: "Verified By",
+					properties: ["verifiedBy"],
+					sortProperty: "verifiedBy",
+					defaultWidth: 200,
+					defaultVisibility: "hidden"
+				},
+				{
+					name: "verifiedAt",
+					displayName: "Verified At",
+					properties: ["verifiedAt"],
+					sortProperty: "verifiedAt",
+					defaultWidth: 200,
+					defaultVisibility: "hidden"
 				}
 			],
 			filters: [
 				{
 					name: "_id",
-					displayName: "Musare ID",
+					displayName: "Song ID",
 					property: "_id",
 					filterTypes: ["exact"],
 					defaultFilterType: "exact"
@@ -402,14 +503,27 @@ export default {
 					displayName: "Artists",
 					property: "artists",
 					filterTypes: ["contains", "exact", "regex"],
-					defaultFilterType: "contains"
+					defaultFilterType: "contains",
+					autosuggest: true,
+					autosuggestDataAction: "songs.getArtists"
 				},
 				{
 					name: "genres",
 					displayName: "Genres",
 					property: "genres",
 					filterTypes: ["contains", "exact", "regex"],
-					defaultFilterType: "contains"
+					defaultFilterType: "contains",
+					autosuggest: true,
+					autosuggestDataAction: "songs.getGenres"
+				},
+				{
+					name: "tags",
+					displayName: "Tags",
+					property: "tags",
+					filterTypes: ["contains", "exact", "regex"],
+					defaultFilterType: "contains",
+					autosuggest: true,
+					autosuggestDataAction: "songs.getTags"
 				},
 				{
 					name: "thumbnail",
@@ -426,27 +540,98 @@ export default {
 					defaultFilterType: "contains"
 				},
 				{
-					name: "status",
-					displayName: "Status",
-					property: "status",
+					name: "requestedAt",
+					displayName: "Requested At",
+					property: "requestedAt",
+					filterTypes: ["datetimeBefore", "datetimeAfter"],
+					defaultFilterType: "datetimeBefore"
+				},
+				{
+					name: "verifiedBy",
+					displayName: "Verified By",
+					property: "verifiedBy",
 					filterTypes: ["contains", "exact", "regex"],
-					defaultFilterType: "exact"
+					defaultFilterType: "contains"
+				},
+				{
+					name: "verifiedAt",
+					displayName: "Verified At",
+					property: "verifiedAt",
+					filterTypes: ["datetimeBefore", "datetimeAfter"],
+					defaultFilterType: "datetimeBefore"
+				},
+				{
+					name: "verified",
+					displayName: "Verified",
+					property: "verified",
+					filterTypes: ["boolean"],
+					defaultFilterType: "boolean"
 				},
 				{
 					name: "likes",
 					displayName: "Likes",
 					property: "likes",
-					filterTypes: ["contains", "exact", "regex"],
-					defaultFilterType: "exact"
+					filterTypes: [
+						"numberLesserEqual",
+						"numberLesser",
+						"numberGreater",
+						"numberGreaterEqual",
+						"numberEquals"
+					],
+					defaultFilterType: "numberLesser"
 				},
 				{
 					name: "dislikes",
 					displayName: "Dislikes",
 					property: "dislikes",
-					filterTypes: ["contains", "exact", "regex"],
-					defaultFilterType: "exact"
+					filterTypes: [
+						"numberLesserEqual",
+						"numberLesser",
+						"numberGreater",
+						"numberGreaterEqual",
+						"numberEquals"
+					],
+					defaultFilterType: "numberLesser"
+				},
+				{
+					name: "duration",
+					displayName: "Duration",
+					property: "duration",
+					filterTypes: [
+						"numberLesserEqual",
+						"numberLesser",
+						"numberGreater",
+						"numberGreaterEqual",
+						"numberEquals"
+					],
+					defaultFilterType: "numberLesser"
+				},
+				{
+					name: "skipDuration",
+					displayName: "Skip Duration",
+					property: "skipDuration",
+					filterTypes: [
+						"numberLesserEqual",
+						"numberLesser",
+						"numberGreater",
+						"numberGreaterEqual",
+						"numberEquals"
+					],
+					defaultFilterType: "numberLesser"
 				}
 			],
+			events: {
+				adminRoom: "songs",
+				updated: {
+					event: "admin.song.updated",
+					id: "song._id",
+					item: "song"
+				},
+				removed: {
+					event: "admin.song.removed",
+					id: "songId"
+				}
+			},
 			jobs: [
 				{
 					name: "Update all songs",
@@ -456,7 +641,13 @@ export default {
 					name: "Recalculate all song ratings",
 					socket: "songs.recalculateAllRatings"
 				}
-			]
+			],
+			confirm: {
+				message: "",
+				action: "",
+				params: null
+			},
+			bulkActionsType: null
 		};
 	},
 	computed: {
@@ -471,14 +662,6 @@ export default {
 		})
 	},
 	mounted() {
-		// TODO: Implement song update events in advanced table
-		// this.socket.on("event:admin.song.updated", res => {
-		// 	const { song } = res.data;
-		// 	if (this.songs.filter(s => s._id === song._id).length === 0)
-		// 		this.addSong(song);
-		// 	else this.updateSong(song);
-		// });
-
 		if (this.$route.query.songId) {
 			this.socket.dispatch(
 				"songs.getSongFromSongId",
@@ -490,149 +673,156 @@ export default {
 				}
 			);
 		}
-
-		keyboardShortcuts.registerShortcut(
-			"songs.toggleKeyboardShortcutsHelper",
-			{
-				keyCode: 191, // '/' key
-				ctrl: true,
-				preventDefault: true,
-				handler: () => {
-					this.toggleKeyboardShortcutsHelper();
-				}
-			}
-		);
-
-		keyboardShortcuts.registerShortcut(
-			"songs.resetKeyboardShortcutsHelper",
-			{
-				keyCode: 191, // '/' key
-				ctrl: true,
-				shift: true,
-				preventDefault: true,
-				handler: () => {
-					this.resetKeyboardShortcutsHelper();
-				}
-			}
-		);
-	},
-	beforeUnmount() {
-		const shortcutNames = [
-			"songs.toggleKeyboardShortcutsHelper",
-			"songs.resetKeyboardShortcutsHelper"
-		];
-
-		shortcutNames.forEach(shortcutName => {
-			keyboardShortcuts.unregisterShortcut(shortcutName);
-		});
 	},
 	methods: {
+		editOne(song) {
+			this.editSong({ songId: song._id });
+			this.openModal("editSong");
+		},
 		editMany(selectedRows) {
-			if (selectedRows.length === 1) {
-				this.editSong(selectedRows[0]);
-				this.openModal("editSong");
-			} else {
-				new Toast("Bulk editing not yet implemented.");
+			if (selectedRows.length === 1) this.editOne(selectedRows[0]);
+			else {
+				const songs = selectedRows.map(row => ({
+					songId: row._id
+				}));
+				this.editSongs(songs);
+				this.openModal("editSongs");
 			}
+		},
+		verifyOne(songId) {
+			this.socket.dispatch("songs.verify", songId, res => {
+				new Toast(res.message);
+			});
 		},
 		verifyMany(selectedRows) {
-			if (selectedRows.length === 1) {
-				this.socket.dispatch(
-					"songs.verify",
-					selectedRows[0]._id,
-					res => {
-						new Toast(res.message);
-					}
-				);
-			} else {
-				new Toast("Bulk verifying not yet implemented.");
-			}
+			this.socket.dispatch(
+				"songs.verifyMany",
+				selectedRows.map(row => row._id),
+				res => {
+					new Toast(res.message);
+				}
+			);
+		},
+		unverifyOne(songId) {
+			this.socket.dispatch("songs.unverify", songId, res => {
+				new Toast(res.message);
+			});
 		},
 		unverifyMany(selectedRows) {
-			if (selectedRows.length === 1) {
-				this.socket.dispatch(
-					"songs.unverify",
-					selectedRows[0]._id,
-					res => {
-						new Toast(res.message);
-					}
-				);
-			} else {
-				new Toast("Bulk unverifying not yet implemented.");
+			this.socket.dispatch(
+				"songs.unverifyMany",
+				selectedRows.map(row => row._id),
+				res => {
+					new Toast(res.message);
+				}
+			);
+		},
+		setTags(selectedRows) {
+			this.bulkActionsType = {
+				name: "tags",
+				action: "songs.editTags",
+				items: selectedRows.map(row => row._id),
+				regex: new RegExp(
+					/^[a-zA-Z0-9_]{1,64}$|^[a-zA-Z0-9_]{1,64}\[[a-zA-Z0-9_]{1,64}\]$/
+				),
+				autosuggest: true,
+				autosuggestDataAction: "songs.getTags"
+			};
+			this.openModal("bulkActions");
+		},
+		setArtists(selectedRows) {
+			this.bulkActionsType = {
+				name: "artists",
+				action: "songs.editArtists",
+				items: selectedRows.map(row => row._id),
+				regex: new RegExp(/^(?=.{1,64}$).*$/),
+				autosuggest: true,
+				autosuggestDataAction: "songs.getArtists"
+			};
+			this.openModal("bulkActions");
+		},
+		setGenres(selectedRows) {
+			this.bulkActionsType = {
+				name: "genres",
+				action: "songs.editGenres",
+				items: selectedRows.map(row => row._id),
+				regex: new RegExp(/^[\x00-\x7F]{1,32}$/),
+				autosuggest: true,
+				autosuggestDataAction: "songs.getGenres"
+			};
+			this.openModal("bulkActions");
+		},
+		deleteOne(songId) {
+			this.socket.dispatch("songs.remove", songId, res => {
+				new Toast(res.message);
+			});
+		},
+		deleteMany(selectedRows) {
+			this.socket.dispatch(
+				"songs.removeMany",
+				selectedRows.map(row => row._id),
+				res => {
+					new Toast(res.message);
+				}
+			);
+		},
+		getDateFormatted(createdAt) {
+			const date = new Date(createdAt);
+			const year = date.getFullYear();
+			const month = `${date.getMonth() + 1}`.padStart(2, 0);
+			const day = `${date.getDate()}`.padStart(2, 0);
+			const hour = `${date.getHours()}`.padStart(2, 0);
+			const minute = `${date.getMinutes()}`.padStart(2, 0);
+			return `${year}-${month}-${day} ${hour}:${minute}`;
+		},
+		confirmAction(confirm) {
+			this.confirm = confirm;
+			this.updateConfirmMessage(confirm.message);
+			this.openModal("confirm");
+		},
+		handleConfirmed() {
+			const { action, params } = this.confirm;
+			if (typeof this[action] === "function") {
+				if (params) this[action](params);
+				else this[action]();
 			}
-		},
-		tagMany() {
-			new Toast("Bulk tagging not yet implemented.");
-		},
-		setArtists() {
-			new Toast("Bulk setting artists not yet implemented.");
-		},
-		setGenres() {
-			new Toast("Bulk setting genres not yet implemented.");
-		},
-		deleteMany() {
-			new Toast("Bulk deleting not yet implemented.");
-		},
-		toggleKeyboardShortcutsHelper() {
-			this.$refs.keyboardShortcutsHelper.toggleBox();
-		},
-		resetKeyboardShortcutsHelper() {
-			this.$refs.keyboardShortcutsHelper.resetBox();
+			this.confirm = {
+				message: "",
+				action: "",
+				params: null
+			};
 		},
 		...mapActions("modals/editSong", ["editSong"]),
+		...mapActions("modals/editSongs", ["editSongs"]),
+		...mapActions("modals/confirm", ["updateConfirmMessage"]),
 		...mapActions("modalVisibility", ["openModal"])
 	}
 };
 </script>
 
 <style lang="scss" scoped>
-#keyboardShortcutsHelper {
-	.box-body {
-		.biggest {
-			font-size: 18px;
-		}
-
-		.bigger {
-			font-size: 16px;
-		}
-
-		span {
-			display: block;
-		}
-	}
-}
-
 .song-thumbnail {
 	display: block;
 	max-width: 50px;
 	margin: 0 auto;
 }
 
-.bulk-popup {
-	.song-bulk-actions {
-		display: flex;
-		flex-direction: row;
-		width: 100%;
-		justify-content: space-evenly;
-
-		.material-icons {
-			position: relative;
-			top: 6px;
-			margin-left: 5px;
-			cursor: pointer;
-			color: var(--primary-color);
-
-			&:hover,
-			&:focus {
-				filter: brightness(90%);
+/deep/ .bulk-popup .bulk-actions {
+	.verify-songs-icon {
+		color: var(--green);
+	}
+	& > span {
+		position: relative;
+		top: 6px;
+		margin-left: 5px;
+		height: 25px;
+		& > div {
+			height: 25px;
+			& > .unverify-songs-icon {
+				color: var(--dark-red);
+				top: unset;
+				margin-left: unset;
 			}
-		}
-		.verify-songs-icon {
-			color: var(--green);
-		}
-		.unverify-songs-icon,
-		.delete-songs-icon {
-			color: var(--dark-red);
 		}
 	}
 }

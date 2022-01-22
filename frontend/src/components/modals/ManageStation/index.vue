@@ -10,7 +10,7 @@
 		"
 		:style="`--primary-color: var(--${station.theme})`"
 		class="manage-station-modal"
-		:wide="isOwnerOrAdmin() || sector !== 'home'"
+		:size="isOwnerOrAdmin() || sector !== 'home' ? 'wide' : null"
 		:split="isOwnerOrAdmin() || sector !== 'home'"
 	>
 		<template #body v-if="station && station._id">
@@ -247,7 +247,7 @@ export default {
 		ws.onConnect(this.init);
 
 		this.socket.on(
-			"event:station.queue.updated",
+			"event:manageStation.queue.updated",
 			res => {
 				if (res.data.stationId === this.station._id)
 					this.updateSongsList(res.data.queue);
@@ -256,7 +256,7 @@ export default {
 		);
 
 		this.socket.on(
-			"event:station.queue.song.repositioned",
+			"event:manageStation.queue.song.repositioned",
 			res => {
 				if (res.data.stationId === this.station._id)
 					this.repositionSongInList(res.data.song);

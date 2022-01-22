@@ -159,7 +159,11 @@ export default {
 			shift: false,
 			ctrl: false,
 			handler: () => {
-				if (Object.keys(this.currentlyActive).length !== 0)
+				if (
+					Object.keys(this.currentlyActive).length !== 0 &&
+					this.currentlyActive[0] !== "editSong" &&
+					this.currentlyActive[0] !== "editSongs"
+				)
 					this.closeCurrentModal();
 			}
 		});
@@ -395,6 +399,11 @@ export default {
 		&:checked:after {
 			background-color: var(--white);
 		}
+	}
+
+	.pill {
+		background-color: var(--dark-grey);
+		color: var(--primary-color);
 	}
 }
 
@@ -1214,7 +1223,7 @@ img {
 	background-color: var(--white);
 	color: var(--dark-grey);
 	width: 100% !important;
-	max-width: 500px !important;
+	max-width: 600px !important;
 	max-height: calc(100vh - 300px);
 	overflow-y: auto;
 
@@ -2002,6 +2011,16 @@ html {
 		::-webkit-scrollbar-thumb {
 			background-color: var(--light-grey);
 		}
+
+		::-webkit-scrollbar-track {
+			background-color: var(--dark-grey-3);
+		}
+	}
+
+	div {
+		::-webkit-scrollbar-track {
+			background-color: transparent !important;
+		}
 	}
 }
 
@@ -2011,7 +2030,7 @@ html {
 }
 
 ::-webkit-scrollbar-track {
-	background-color: transparent;
+	background-color: var(--light-grey-2);
 }
 
 ::-webkit-scrollbar-thumb {
@@ -2025,5 +2044,27 @@ html {
 :disabled,
 .disabled {
 	cursor: not-allowed;
+}
+
+.pill {
+	background-color: var(--light-grey);
+	color: var(--primary-color);
+	padding: 5px 10px;
+	border-radius: 5px;
+	font-size: 14px;
+	font-weight: 600;
+	white-space: nowrap;
+	margin-top: 5px;
+	box-shadow: 0 2px 3px rgba(10, 10, 10, 0.1), 0 0 0 1px rgba(10, 10, 10, 0.1);
+	transition: all 0.2s ease-in-out;
+
+	&:hover,
+	&:focus {
+		filter: brightness(95%);
+	}
+
+	&:not(:last-of-type) {
+		margin-right: 5px;
+	}
 }
 </style>

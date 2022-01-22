@@ -100,7 +100,7 @@
 												filter.filter
 											)"
 											:key="filterType.name"
-											:value="filterType.name"
+											:value="filterType"
 											:selected="
 												filter.filter
 													.defaultFilterType ===
@@ -111,16 +111,85 @@
 										</option>
 									</select>
 								</div>
-								<p class="control is-expanded">
+								<div
+									v-if="
+										filter.filterType.name &&
+										(filter.filterType.name === 'exact' ||
+											filter.filterType.name ===
+												'boolean') &&
+										filter.filter.dropdown
+									"
+									class="control is-expanded select"
+								>
+									<select
+										v-model="filter.data"
+										:disabled="!filter.filterType"
+									>
+										<option
+											v-for="[
+												dropdownValue,
+												dropdownDisplay
+											] in filter.filter.dropdown"
+											:key="dropdownValue"
+											:value="dropdownValue"
+										>
+											{{ dropdownDisplay }}
+										</option>
+									</select>
+								</div>
+								<div
+									v-else-if="
+										filter.filterType.name &&
+										filter.filterType.name === 'boolean'
+									"
+									class="control is-expanded select"
+								>
+									<select
+										v-model="filter.data"
+										:disabled="!filter.filterType"
+									>
+										<option :value="true">true</option>
+										<option :value="false">false</option>
+									</select>
+								</div>
+								<div v-else class="control is-expanded">
 									<input
+										v-if="
+											filter.filterType.name &&
+											filter.filterType.name.startsWith(
+												'datetime'
+											)
+										"
 										v-model="filter.data"
 										class="input"
-										type="text"
-										placeholder="Search value"
+										type="datetime-local"
+									/>
+									<input
+										v-else-if="
+											filter.filterType.name &&
+											filter.filterType.name.startsWith(
+												'number'
+											)
+										"
+										v-model="filter.data"
+										class="input"
+										type="number"
 										:disabled="!filter.filterType"
 										@keydown.enter="applyFilterAndGetData()"
 									/>
-								</p>
+									<auto-suggest
+										v-else
+										v-model="filter.data"
+										placeholder="Search value"
+										:disabled="!filter.filterType"
+										:all-items="
+											autosuggest.allItems[
+												filter.filter.name
+											]
+										"
+										@submitted="applyFilterAndGetData()"
+									/>
+								</div>
 								<div class="control">
 									<button
 										class="button material-icons is-danger"
@@ -217,7 +286,10 @@
 										? "not"
 										: ""
 								}}
-								{{ filter.filterType }} "{{ filter.data }}"
+								{{
+									filter.filterType.displayName.toLowerCase()
+								}}
+								"{{ filter.data }}"
 								{{
 									appliedFilters.length === index + 1
 										? ""
@@ -287,7 +359,8 @@
 									<button
 										v-if="
 											column.name !== 'select' &&
-											column.name !== 'placeholder'
+											column.name !== 'placeholder' &&
+											column.name !== 'updatedPlaceholder'
 										"
 										:class="{
 											sortable: column.sortable,
@@ -307,7 +380,6 @@
 										>
 											<label class="switch">
 												<input
-													v-if="column.hidable"
 													type="checkbox"
 													:id="index"
 													:checked="
@@ -343,7 +415,12 @@
 				</div>
 			</div>
 			<div class="table-container">
-				<table class="table">
+				<table
+					:class="{
+						table: true,
+						'has-checkboxes': hasCheckboxes
+					}"
+				>
 					<thead>
 						<draggable
 							item-key="name"
@@ -357,11 +434,10 @@
 							<template #item="{ element: column }">
 								<th
 									v-if="
-										!(
-											column.name === 'select' &&
-											data.length === 0
-										) &&
-										shownColumns.indexOf(column.name) !== -1
+										shownColumns.indexOf(column.name) !==
+											-1 &&
+										(column.name !== 'updatedPlaceholder' ||
+											rows.length > 0)
 									"
 									:class="{
 										sortable: column.sortable,
@@ -382,9 +458,17 @@
 									<div v-if="column.name === 'select'">
 										<p class="checkbox">
 											<input
+												v-if="rows.length === 0"
+												type="checkbox"
+												disabled
+											/>
+											<input
+												v-else
 												type="checkbox"
 												:checked="
-													data.length ===
+													rows.filter(
+														row => !row.removed
+													).length ===
 													selectedRows.length
 												"
 												@click="toggleAllRows()"
@@ -452,12 +536,30 @@
 					</thead>
 					<tbody>
 						<tr
-							v-for="(item, itemIndex) in data"
+							v-for="(item, itemIndex) in rows"
 							:key="item._id"
 							:class="{
 								selected: item.selected,
-								highlighted: item.highlighted
+								highlighted: item.highlighted,
+								updated: item.updated,
+								removed: item.removed
 							}"
+							:ref="`row-${itemIndex}`"
+							tabindex="0"
+							@blur="unhighlightRow(itemIndex)"
+							@keydown.up.prevent
+							@keydown.down.prevent
+							@keydown.space.prevent
+							@click="highlightRow(itemIndex)"
+							@keyup.up.exact="highlightUp(itemIndex)"
+							@keyup.down.exact="highlightDown(itemIndex)"
+							@keyup.shift.up.exact="selectUp(itemIndex)"
+							@keyup.shift.down.exact="selectDown(itemIndex)"
+							@keyup.ctrl.up.exact="unselectUp(itemIndex)"
+							@keyup.ctrl.down.exact="unselectDown(itemIndex)"
+							@keyup.space.exact="
+								toggleSelectedRow(itemIndex, {})
+							"
 						>
 							<td
 								v-for="column in sortedFilteredColumns"
@@ -470,10 +572,38 @@
 										column.properties.length === 0 ||
 										column.properties.every(
 											property =>
-												item[property] !== undefined
+												property
+													.split('.')
+													.reduce(
+														(previous, current) =>
+															previous &&
+															previous[
+																current
+															] !== null &&
+															previous[
+																current
+															] !== undefined
+																? previous[
+																		current
+																  ]
+																: null,
+														item
+													) !== null
 										)
 									"
 								></slot>
+								<div
+									v-if="
+										column.name === 'updatedPlaceholder' &&
+										item.updated
+									"
+									class="updated-tooltip"
+									content="Row updated"
+									v-tippy="{
+										theme: 'info',
+										placement: 'right'
+									}"
+								></div>
 								<p
 									class="checkbox"
 									v-if="column.name === 'select'"
@@ -484,8 +614,15 @@
 										@click="
 											toggleSelectedRow(itemIndex, $event)
 										"
+										:disabled="item.removed"
 									/>
 								</p>
+								<span
+									v-if="item.removed"
+									class="removed-overlay"
+									content="Item removed"
+									v-tippy="{ theme: 'info' }"
+								></span>
 								<div
 									class="resizer"
 									v-if="column.resizable"
@@ -503,6 +640,9 @@
 						</tr>
 					</tbody>
 				</table>
+			</div>
+			<div v-if="rows.length === 0" class="table-no-results">
+				No results found
 			</div>
 			<div class="table-footer">
 				<div class="page-controls">
@@ -527,10 +667,12 @@
 						fast_rewind
 					</button>
 
-					<p>Page {{ page }} / {{ lastPage }}</p>
+					<p>Page {{ page }} / {{ lastPage > 0 ? lastPage : 1 }}</p>
 
 					<button
-						:class="{ disabled: page === lastPage }"
+						:class="{
+							disabled: page === lastPage || lastPage === 0
+						}"
 						class="button is-primary material-icons"
 						:disabled="page === lastPage"
 						@click="changePage(page + 1)"
@@ -540,7 +682,9 @@
 						fast_forward
 					</button>
 					<button
-						:class="{ disabled: page === lastPage }"
+						:class="{
+							disabled: page === lastPage || lastPage === 0
+						}"
 						class="button is-primary material-icons"
 						:disabled="page === lastPage"
 						@click="changePage(lastPage)"
@@ -572,12 +716,13 @@
 			</div>
 		</div>
 		<div
-			v-if="selectedRows.length > 0"
+			v-if="hasCheckboxes && selectedRows.length > 0"
 			class="bulk-popup"
 			:style="{
 				top: bulkPopup.top + 'px',
 				left: bulkPopup.left + 'px'
 			}"
+			ref="bulk-popup"
 		>
 			<button
 				class="button is-primary"
@@ -592,7 +737,6 @@
 			</button>
 			<slot name="bulk-actions" :item="selectedRows" />
 			<div class="right">
-				<slot name="bulk-actions-right" :item="selectedRows" />
 				<span
 					class="material-icons drag-icon"
 					@mousedown.left="onDragBox"
@@ -607,16 +751,19 @@
 </template>
 
 <script>
-import { mapGetters } from "vuex";
+import { mapGetters, mapState } from "vuex";
 import draggable from "vuedraggable";
 
 import Toast from "toasters";
+import AutoSuggest from "@/components/AutoSuggest.vue";
 
+import keyboardShortcuts from "@/keyboardShortcuts";
 import ws from "@/ws";
 
 export default {
 	components: {
-		draggable
+		draggable,
+		AutoSuggest
 	},
 	props: {
 		/*
@@ -638,13 +785,17 @@ export default {
 		columns: { type: Array, default: null },
 		filters: { type: Array, default: null },
 		dataAction: { type: String, default: null },
-		name: { type: String, default: null }
+		name: { type: String, default: null },
+		maxWidth: { type: Number, default: 1880 },
+		query: { type: Boolean, default: true },
+		keyboardShortcuts: { type: Boolean, default: true },
+		events: { type: Object, default: () => {} }
 	},
 	data() {
 		return {
 			page: 1,
 			pageSize: 10,
-			data: [],
+			rows: [],
 			count: 0, // TODO Rename
 			sort: {},
 			orderedColumns: [],
@@ -690,6 +841,38 @@ export default {
 				regex: {
 					name: "regex",
 					displayName: "Regex"
+				},
+				datetimeBefore: {
+					name: "datetimeBefore",
+					displayName: "Before"
+				},
+				datetimeAfter: {
+					name: "datetimeAfter",
+					displayName: "After"
+				},
+				numberLesserEqual: {
+					name: "numberLesserEqual",
+					displayName: "Less than or equal to"
+				},
+				numberLesser: {
+					name: "numberLesser",
+					displayName: "Less than"
+				},
+				numberGreater: {
+					name: "numberGreater",
+					displayName: "Greater than"
+				},
+				numberGreaterEqual: {
+					name: "numberGreaterEqual",
+					displayName: "Greater than or equal to"
+				},
+				numberEquals: {
+					name: "numberEquals",
+					displayName: "Equals"
+				},
+				boolean: {
+					name: "boolean",
+					displayName: "Boolean"
 				}
 			},
 			bulkPopup: {
@@ -705,7 +888,10 @@ export default {
 			showColumnsDropdown: false,
 			lastColumnResizerTapped: null,
 			lastColumnResizerTappedDate: 0,
-			lastBulkActionsTappedDate: 0
+			lastBulkActionsTappedDate: 0,
+			autosuggest: {
+				allItems: {}
+			}
 		};
 	},
 	computed: {
@@ -730,11 +916,23 @@ export default {
 			return this.orderedColumns.filter(column => column.hidable);
 		},
 		lastSelectedItemIndex() {
-			return this.data.findIndex(item => item.highlighted);
+			return this.rows.findIndex(item => item.highlighted);
 		},
 		selectedRows() {
-			return this.data.filter(data => data.selected);
+			return this.rows.filter(row => row.selected);
 		},
+		hasCheckboxes() {
+			return (
+				this.$slots["bulk-actions"] != null ||
+				this.$slots["bulk-actions-right"] != null
+			);
+		},
+		aModalIsOpen() {
+			return Object.keys(this.currentlyActive).length > 0;
+		},
+		...mapState({
+			currentlyActive: state => state.modalVisibility.currentlyActive
+		}),
 		...mapGetters({
 			socket: "websockets/getSocket"
 		})
@@ -749,19 +947,7 @@ export default {
 	mounted() {
 		const tableSettings = this.getTableSettings();
 
-		this.orderedColumns = [
-			{
-				name: "select",
-				displayName: "",
-				properties: [],
-				sortable: false,
-				hidable: false,
-				draggable: false,
-				resizable: false,
-				minWidth: 47,
-				defaultWidth: 47,
-				maxWidth: 47
-			},
+		const columns = [
 			...this.columns.map(column => ({
 				...this.columnDefault,
 				...column
@@ -778,10 +964,45 @@ export default {
 				width: "auto",
 				maxWidth: "auto"
 			}
-		].sort((columnA, columnB) => {
-			// Always places select column in the first position
+		];
+
+		if (this.hasCheckboxes)
+			columns.unshift({
+				name: "select",
+				displayName: "",
+				properties: [],
+				sortable: false,
+				hidable: false,
+				draggable: false,
+				resizable: false,
+				minWidth: 47,
+				defaultWidth: 47,
+				maxWidth: 47
+			});
+
+		if (this.events && this.events.updated)
+			columns.unshift({
+				name: "updatedPlaceholder",
+				displayName: "",
+				properties: [],
+				sortable: false,
+				hidable: false,
+				draggable: false,
+				resizable: false,
+				minWidth: 5,
+				width: 5,
+				maxWidth: 5
+			});
+
+		this.orderedColumns = columns.sort((columnA, columnB) => {
+			// Always places updatedPlaceholder column in the first position
+			if (columnA.name === "updatedPlaceholder") return -1;
+			if (columnB.name === "updatedPlaceholder") return 1;
+			// Always places select column in the second position
 			if (columnA.name === "select") return -1;
+			if (columnB.name === "select") return 1;
 			// Always places placeholder column in the last position
+			if (columnA.name === "placeholder") return 1;
 			if (columnB.name === "placeholder") return -1;
 
 			// If there are no table settings stored, use default ordering
@@ -811,6 +1032,10 @@ export default {
 		this.recalculateWidths();
 
 		if (tableSettings) {
+			// If table settings' page is an integer, use it for the page
+			if (Number.isInteger(tableSettings?.page))
+				this.page = tableSettings.page;
+
 			// If table settings' pageSize is an integer, use it for the pageSize
 			if (Number.isInteger(tableSettings?.pageSize))
 				this.pageSize = tableSettings.pageSize;
@@ -835,7 +1060,7 @@ export default {
 					const columnWidth = tableSettings.columnWidths.find(
 						column => column.name === orderedColumn.name
 					)?.width;
-					if (columnWidth)
+					if (orderedColumn.resizable && columnWidth)
 						return { ...orderedColumn, width: columnWidth };
 					return orderedColumn;
 				});
@@ -873,13 +1098,279 @@ export default {
 		});
 
 		ws.onConnect(this.init);
+
+		if (this.events && this.events.updated)
+			this.socket.on(`event:${this.events.updated.event}`, res => {
+				const index = this.rows
+					.map(row => row._id)
+					.indexOf(
+						this.events.updated.id
+							.split(".")
+							.reduce(
+								(previous, current) =>
+									previous &&
+									previous[current] !== null &&
+									previous[current] !== undefined
+										? previous[current]
+										: null,
+								res.data
+							)
+					);
+				const row = this.events.updated.item
+					.split(".")
+					.reduce(
+						(previous, current) =>
+							previous &&
+							previous[current] !== null &&
+							previous[current] !== undefined
+								? previous[current]
+								: null,
+						res.data
+					);
+				this.updateData(index, row);
+			});
+		if (this.events && this.events.removed)
+			this.socket.on(`event:${this.events.removed.event}`, res => {
+				const index = this.rows
+					.map(row => row._id)
+					.indexOf(
+						this.events.removed.id
+							.split(".")
+							.reduce(
+								(previous, current) =>
+									previous &&
+									previous[current] !== null &&
+									previous[current] !== undefined
+										? previous[current]
+										: null,
+								res.data
+							)
+					);
+				this.removeData(index);
+			});
+
+		if (this.keyboardShortcuts) {
+			// Navigation section
+
+			// Page navigation section
+			keyboardShortcuts.registerShortcut("advancedTable.previousPage", {
+				keyCode: 37, // 'Left arrow' key
+				ctrl: true,
+				preventDefault: false,
+				handler: event => {
+					// Previous page
+					if (this.aModalIsOpen) return;
+					if (
+						document.activeElement.nodeName === "INPUT" ||
+						document.activeElement.nodeName === "TEXTAREA"
+					)
+						return;
+					event.preventDefault();
+					this.changePage(this.page - 1);
+				}
+			});
+
+			keyboardShortcuts.registerShortcut("advancedTable.nextPage", {
+				keyCode: 39, // 'Right arrow' key
+				ctrl: true,
+				preventDefault: false,
+				handler: event => {
+					// Next page
+					if (this.aModalIsOpen) return;
+					if (
+						document.activeElement.nodeName === "INPUT" ||
+						document.activeElement.nodeName === "TEXTAREA"
+					)
+						return;
+					event.preventDefault();
+					this.changePage(this.page + 1);
+				}
+			});
+
+			keyboardShortcuts.registerShortcut("advancedTable.firstPage", {
+				keyCode: 37, // 'Left arrow' key
+				ctrl: true,
+				shift: true,
+				preventDefault: false,
+				handler: event => {
+					// First page
+					if (this.aModalIsOpen) return;
+					if (
+						document.activeElement.nodeName === "INPUT" ||
+						document.activeElement.nodeName === "TEXTAREA"
+					)
+						return;
+					event.preventDefault();
+					this.changePage(1);
+				}
+			});
+
+			keyboardShortcuts.registerShortcut("advancedTable.lastPage", {
+				keyCode: 39, // 'Right arrow' key
+				ctrl: true,
+				shift: true,
+				preventDefault: false,
+				handler: event => {
+					// Last page
+					if (this.aModalIsOpen) return;
+					if (
+						document.activeElement.nodeName === "INPUT" ||
+						document.activeElement.nodeName === "TEXTAREA"
+					)
+						return;
+					event.preventDefault();
+					this.changePage(this.lastPage);
+				}
+			});
+
+			// Reset localStorage section
+			keyboardShortcuts.registerShortcut(
+				"advancedTable.resetLocalStorage",
+				{
+					keyCode: 116, // 'F5' key
+					ctrl: true,
+					preventDefault: false,
+					handler: () => {
+						// Reset local storage
+						if (this.aModalIsOpen) return;
+						console.log("Reset local storage");
+						localStorage.removeItem(
+							`advancedTableSettings:${this.name}`
+						);
+						this.$router.push({ query: "" });
+					}
+				}
+			);
+
+			// Selecting section
+			keyboardShortcuts.registerShortcut("advancedTable.selectAll", {
+				keyCode: 65, // 'A' key
+				ctrl: true,
+				preventDefault: false,
+				handler: event => {
+					if (this.aModalIsOpen) return;
+					if (
+						document.activeElement.nodeName === "INPUT" ||
+						document.activeElement.nodeName === "TEXTAREA"
+					)
+						return;
+					event.preventDefault();
+					this.toggleAllRows();
+				}
+			});
+
+			// Popup actions section
+			for (let i = 1; i <= 9; i += 1) {
+				keyboardShortcuts.registerShortcut(
+					`advancedTable.executePopupAction${i}`,
+					{
+						keyCode: 48 + i, // '1-9' keys, where 49 is 1 and 57 is 9
+						ctrl: true,
+						preventDefault: true,
+						handler: () => {
+							// Execute popup action 1-9
+							if (this.aModalIsOpen) return;
+							if (this.selectedRows.length === 0) return;
+
+							const bulkActionsElement =
+								this.$refs["bulk-popup"].querySelector(
+									".bulk-actions"
+								);
+
+							bulkActionsElement.children[i - 1].click();
+						}
+					}
+				);
+			}
+
+			keyboardShortcuts.registerShortcut(
+				`advancedTable.selectPopupAction1`,
+				{
+					keyCode: 48, // '0' key
+					ctrl: true,
+					preventDefault: true,
+					handler: () => {
+						// Select popup action 0
+						if (this.aModalIsOpen) return;
+						if (this.selectedRows.length === 0) return;
+
+						const bulkActionsElement =
+							this.$refs["bulk-popup"].querySelector(
+								".bulk-actions"
+							);
+
+						bulkActionsElement.children[
+							bulkActionsElement.children.length - 1
+						].focus();
+					}
+				}
+			);
+		}
 	},
 	unmounted() {
 		window.removeEventListener("resize", this.onWindowResize);
+		if (this.storeTableSettingsDebounceTimeout)
+			clearTimeout(this.storeTableSettingsDebounceTimeout);
+
+		if (this.keyboardShortcuts) {
+			const shortcutNames = [
+				// Navigation
+				"advancedTable.previousPage",
+				"advancedTable.nextPage",
+				"advancedTable.firstPage",
+				"advancedTable.lastPage",
+				// Reset localStorage
+				"advancedTable.resetLocalStorage",
+				// Selecting
+				"advancedTable.selectAll",
+				// Popup actions
+				"advancedTable.executePopupAction1",
+				"advancedTable.executePopupAction2",
+				"advancedTable.executePopupAction3",
+				"advancedTable.executePopupAction4",
+				"advancedTable.executePopupAction5",
+				"advancedTable.executePopupAction6",
+				"advancedTable.executePopupAction7",
+				"advancedTable.executePopupAction8",
+				"advancedTable.executePopupAction9",
+				"advancedTable.selectPopupAction1"
+			];
+
+			shortcutNames.forEach(shortcutName => {
+				keyboardShortcuts.unregisterShortcut(shortcutName);
+			});
+		}
 	},
 	methods: {
 		init() {
 			this.getData();
+			if (this.query) this.setQuery();
+			if (this.events) {
+				if (this.events.room)
+					this.socket.dispatch(
+						"apis.joinRoom",
+						this.events.room,
+						() => {}
+					);
+				if (this.events.adminRoom)
+					this.socket.dispatch(
+						"apis.joinAdminRoom",
+						this.events.adminRoom,
+						() => {}
+					);
+			}
+			this.filters.forEach(filter => {
+				if (filter.autosuggest && filter.autosuggestDataAction) {
+					this.socket.dispatch(filter.autosuggestDataAction, res => {
+						if (res.status === "success") {
+							const { items } = res.data;
+							this.autosuggest.allItems[filter.name] = items;
+						} else {
+							new Toast(res.message);
+						}
+					});
+				}
+			});
 		},
 		getData() {
 			this.socket.dispatch(
@@ -888,13 +1379,15 @@ export default {
 				this.pageSize,
 				this.properties,
 				this.sort,
-				this.appliedFilters,
+				this.appliedFilters.map(filter => ({
+					...filter,
+					filterType: filter.filterType.name
+				})),
 				this.appliedFilterOperator,
 				res => {
-					console.log(111, res);
 					if (res.status === "success") {
 						const { data, count } = res.data;
-						this.data = data.map(row => ({
+						this.rows = data.map(row => ({
 							...row,
 							selected: false
 						}));
@@ -906,6 +1399,7 @@ export default {
 			);
 		},
 		changePageSize() {
+			this.page = 1;
 			this.getData();
 			this.storeTableSettings();
 		},
@@ -915,6 +1409,7 @@ export default {
 			if (page === this.page) return;
 			this.page = page;
 			this.getData();
+			if (this.query) this.setQuery();
 		},
 		changeSort(column) {
 			if (column.sortable) {
@@ -930,6 +1425,7 @@ export default {
 			}
 		},
 		toggleColumnVisibility(column) {
+			if (!column.hidable) return false;
 			if (this.shownColumns.indexOf(column.name) !== -1) {
 				if (this.shownColumns.length <= 3)
 					return new Toast(
@@ -951,7 +1447,7 @@ export default {
 			// Shift was pressed, so attempt to select all items between the clicked item and last clicked item
 			if (shiftKey) {
 				// If the clicked item is already selected, prevent default, otherwise the checkbox will be unchecked
-				if (this.data[itemIndex].selected) event.preventDefault();
+				if (this.rows[itemIndex].selected) event.preventDefault();
 				// If there is a last clicked item
 				if (this.lastSelectedItemIndex >= 0) {
 					// Clicked item is lower than last item, so select upwards until it reaches the last selected item
@@ -961,7 +1457,8 @@ export default {
 							itemIndexUp > this.lastSelectedItemIndex;
 							itemIndexUp -= 1
 						) {
-							this.data[itemIndexUp].selected = true;
+							if (!this.rows[itemIndexUp].removed)
+								this.rows[itemIndexUp].selected = true;
 						}
 					}
 					// Clicked item is higher than last item, so select downwards until it reaches the last selected item
@@ -971,7 +1468,8 @@ export default {
 							itemIndexDown < this.lastSelectedItemIndex;
 							itemIndexDown += 1
 						) {
-							this.data[itemIndexDown].selected = true;
+							if (!this.rows[itemIndexDown].removed)
+								this.rows[itemIndexDown].selected = true;
 						}
 					}
 				}
@@ -979,7 +1477,7 @@ export default {
 			// Ctrl was pressed, so attempt to unselect all items between the clicked item and last clicked item
 			else if (ctrlKey) {
 				// If the clicked item is already unselected, prevent default, otherwise the checkbox will be checked
-				if (!this.data[itemIndex].selected) event.preventDefault();
+				if (!this.rows[itemIndex].selected) event.preventDefault();
 				// If there is a last clicked item
 				if (this.lastSelectedItemIndex >= 0) {
 					// Clicked item is lower than last item, so unselect upwards until it reaches the last selected item
@@ -989,7 +1487,8 @@ export default {
 							itemIndexUp >= this.lastSelectedItemIndex;
 							itemIndexUp -= 1
 						) {
-							this.data[itemIndexUp].selected = false;
+							if (!this.rows[itemIndexUp].removed)
+								this.rows[itemIndexUp].selected = false;
 						}
 					}
 					// Clicked item is higher than last item, so unselect downwards until it reaches the last selected item
@@ -999,34 +1498,113 @@ export default {
 							itemIndexDown <= this.lastSelectedItemIndex;
 							itemIndexDown += 1
 						) {
-							this.data[itemIndexDown].selected = false;
+							if (!this.rows[itemIndexDown].removed)
+								this.rows[itemIndexDown].selected = false;
 						}
 					}
 				}
 			}
 			// Neither ctrl nor shift were pressed, so toggle clicked item
 			else {
-				this.data[itemIndex].selected = !this.data[itemIndex].selected;
+				this.rows[itemIndex].selected = !this.rows[itemIndex].selected;
 			}
 
 			// Set the last clicked item to no longer be highlighted, if it exists
 			if (this.lastSelectedItemIndex >= 0)
-				this.data[this.lastSelectedItemIndex].highlighted = false;
+				this.rows[this.lastSelectedItemIndex].highlighted = false;
 			// Set the clicked item to be highlighted
-			this.data[itemIndex].highlighted = true;
+			this.rows[itemIndex].highlighted = true;
 		},
 		toggleAllRows() {
-			if (this.data.length > this.selectedRows.length) {
-				this.data = this.data.map(row => ({ ...row, selected: true }));
+			if (
+				this.rows.filter(row => !row.removed).length >
+				this.selectedRows.length
+			) {
+				this.rows = this.rows.map(row => {
+					if (row.removed) return row;
+					return { ...row, selected: true };
+				});
 			} else {
-				this.data = this.data.map(row => ({ ...row, selected: false }));
+				this.rows = this.rows.map(row => {
+					if (row.removed) return row;
+					return { ...row, selected: false };
+				});
 			}
 		},
+		highlightUp(itemIndex) {
+			if (itemIndex === 0) return;
+			const newItemIndex = itemIndex - 1;
+			this.highlightRow(newItemIndex);
+		},
+		highlightDown(itemIndex) {
+			if (itemIndex === this.rows.length - 1) return;
+			const newItemIndex = itemIndex + 1;
+			this.highlightRow(newItemIndex);
+		},
+		highlightRow(itemIndex) {
+			const rowElement = this.$refs[`row-${itemIndex}`];
+			// Set the last clicked item to no longer be highlighted, if it exists
+			if (this.lastSelectedItemIndex >= 0)
+				this.rows[this.lastSelectedItemIndex].highlighted = false;
+			if (rowElement) rowElement.focus();
+			// Set the item to be highlighted
+			this.rows[itemIndex].highlighted = true;
+		},
+		unhighlightRow(itemIndex) {
+			const rowElement = this.$refs[`row-${itemIndex}`];
+			if (rowElement) rowElement.blur();
+			// Set the item to no longer be highlighted
+			this.rows[itemIndex].highlighted = false;
+		},
+		selectUp(itemIndex) {
+			if (itemIndex === 0) return;
+			const newItemIndex = itemIndex - 1;
+			if (!this.rows[itemIndex].removed)
+				this.rows[itemIndex].selected = true;
+			if (!this.rows[newItemIndex].removed)
+				this.rows[newItemIndex].selected = true;
+			this.highlightRow(newItemIndex);
+		},
+		selectDown(itemIndex) {
+			if (itemIndex === this.rows.length - 1) return;
+			const newItemIndex = itemIndex + 1;
+			if (!this.rows[itemIndex].removed)
+				this.rows[itemIndex].selected = true;
+			if (!this.rows[newItemIndex].removed)
+				this.rows[newItemIndex].selected = true;
+			this.highlightRow(newItemIndex);
+		},
+		unselectUp(itemIndex) {
+			if (itemIndex === 0) return;
+			const newItemIndex = itemIndex - 1;
+			if (!this.rows[itemIndex].removed)
+				this.rows[itemIndex].selected = false;
+			if (!this.rows[newItemIndex].removed)
+				this.rows[newItemIndex].selected = false;
+			this.highlightRow(newItemIndex);
+		},
+		unselectDown(itemIndex) {
+			if (itemIndex === this.rows.length - 1) return;
+			const newItemIndex = itemIndex + 1;
+			if (!this.rows[itemIndex].removed)
+				this.rows[itemIndex].selected = false;
+			if (!this.rows[newItemIndex].removed)
+				this.rows[newItemIndex].selected = false;
+			this.highlightRow(newItemIndex);
+		},
 		addFilterItem() {
+			let data = "";
+			if (this.addFilterValue.defaultFilterType.startsWith("datetime")) {
+				const now = new Date();
+				now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+				data = now.toISOString().slice(0, 16);
+			}
+
 			this.editingFilters.push({
-				data: "",
+				data,
 				filter: this.addFilterValue,
-				filterType: this.addFilterValue.defaultFilterType
+				filterType:
+					this.allFilterTypes[this.addFilterValue.defaultFilterType]
 			});
 		},
 		removeFilterItem(index) {
@@ -1120,7 +1698,9 @@ export default {
 		},
 		changeFilterType(index) {
 			this.editingFilters[index].filterType =
-				this.editingFilters[index].filter.defaultFilterType;
+				this.allFilterTypes[
+					this.editingFilters[index].filter.defaultFilterType
+				];
 		},
 		onDragBox(e) {
 			const e1 = e || window.event;
@@ -1190,6 +1770,7 @@ export default {
 				JSON.stringify(this.editingFilters)
 			);
 			this.appliedFilterOperator = this.filterOperator;
+			this.page = 1;
 			this.getData();
 			this.storeTableSettings();
 		},
@@ -1210,8 +1791,8 @@ export default {
 					}
 			});
 			calculatedWidth = Math.floor(
-				// max-width of table is 1880px
-				(Math.min(1880, document.body.clientWidth) - calculatedWidth) /
+				(Math.min(this.maxWidth, document.body.clientWidth) -
+					calculatedWidth) /
 					(noWidthCount - 1)
 			);
 			this.orderedColumns = this.orderedColumns.map(column => {
@@ -1240,9 +1821,46 @@ export default {
 			this.storeTableSettings();
 		},
 		getTableSettings() {
-			return JSON.parse(
+			const urlTableSettings = {};
+			if (this.query) {
+				if (this.$route.query.page)
+					urlTableSettings.page = Number.parseInt(
+						this.$route.query.page
+					);
+				if (this.$route.query.pageSize)
+					urlTableSettings.pageSize = Number.parseInt(
+						this.$route.query.pageSize
+					);
+				if (this.$route.query.shownColumns)
+					urlTableSettings.shownColumns = JSON.parse(
+						this.$route.query.shownColumns
+					);
+				if (this.$route.query.columnOrder)
+					urlTableSettings.columnOrder = JSON.parse(
+						this.$route.query.columnOrder
+					);
+				if (this.$route.query.columnWidths)
+					urlTableSettings.columnWidths = JSON.parse(
+						this.$route.query.columnWidths
+					);
+				if (this.$route.query.columnSort)
+					urlTableSettings.columnSort = JSON.parse(
+						this.$route.query.columnSort
+					);
+				if (this.$route.query.filter)
+					urlTableSettings.filter = JSON.parse(
+						this.$route.query.filter
+					);
+			}
+
+			const localStorageTableSettings = JSON.parse(
 				localStorage.getItem(`advancedTableSettings:${this.name}`)
 			);
+
+			return {
+				...localStorageTableSettings,
+				...urlTableSettings
+			};
 		},
 		storeTableSettings() {
 			// Clear debounce timeout
@@ -1251,26 +1869,56 @@ export default {
 
 			// Resizing calls this function a lot, so rather than saving dozens of times a second, use debouncing
 			this.storeTableSettingsDebounceTimeout = setTimeout(() => {
-				localStorage.setItem(
-					`advancedTableSettings:${this.name}`,
-					JSON.stringify({
-						pageSize: this.pageSize,
-						filter: {
-							appliedFilters: this.appliedFilters,
-							appliedFilterOperator: this.appliedFilterOperator
-						},
-						columnSort: this.sort,
-						columnOrder: this.orderedColumns.map(
-							column => column.name
-						),
-						columnWidths: this.orderedColumns.map(column => ({
-							name: column.name,
-							width: column.width
-						})),
-						shownColumns: this.shownColumns
-					})
-				);
+				if (this.query) this.setQuery();
+				this.setLocalStorage();
 			}, 250);
+		},
+		setQuery() {
+			const queryObject = {
+				...this.$route.query,
+				page: this.page,
+				pageSize: this.pageSize,
+				filter: JSON.stringify({
+					appliedFilters: this.appliedFilters,
+					appliedFilterOperator: this.appliedFilterOperator
+				}),
+				columnSort: JSON.stringify(this.sort),
+				columnOrder: JSON.stringify(
+					this.orderedColumns.map(column => column.name)
+				),
+				columnWidths: JSON.stringify(
+					this.orderedColumns.map(column => ({
+						name: column.name,
+						width: column.width
+					}))
+				),
+				shownColumns: JSON.stringify(this.shownColumns)
+			};
+
+			const queryString = `?${Object.keys(queryObject)
+				.map(key => `${key}=${queryObject[key]}`)
+				.join("&")}`;
+
+			window.history.replaceState(null, null, queryString);
+		},
+		setLocalStorage() {
+			localStorage.setItem(
+				`advancedTableSettings:${this.name}`,
+				JSON.stringify({
+					pageSize: this.pageSize,
+					filter: {
+						appliedFilters: this.appliedFilters,
+						appliedFilterOperator: this.appliedFilterOperator
+					},
+					columnSort: this.sort,
+					columnOrder: this.orderedColumns.map(column => column.name),
+					columnWidths: this.orderedColumns.map(column => ({
+						name: column.name,
+						width: column.width
+					})),
+					shownColumns: this.shownColumns
+				})
+			);
 		},
 		onWindowResize() {
 			// Only change the position if the popup is actually visible
@@ -1281,6 +1929,16 @@ export default {
 			if (this.bulkPopup.left < 0) this.bulkPopup.left = 0;
 			if (this.bulkPopup.left > document.body.clientWidth - 400)
 				this.bulkPopup.left = document.body.clientWidth - 400;
+		},
+		updateData(index, data) {
+			this.rows[index] = { ...this.rows[index], ...data, updated: true };
+		},
+		removeData(index) {
+			this.rows[index] = {
+				...this.rows[index],
+				selected: false,
+				removed: true
+			};
 		}
 	}
 };
@@ -1292,7 +1950,7 @@ export default {
 		.table-container .table {
 			&,
 			thead th {
-				background-color: var(--dark-grey-3);
+				background-color: var(--dark-grey-3) !important;
 				color: var(--light-grey-2);
 			}
 
@@ -1300,17 +1958,11 @@ export default {
 				th,
 				td {
 					border-color: var(--dark-grey) !important;
-
-					&:first-child {
-						background-color: var(--dark-grey-3) !important;
-					}
+					background-color: var(--dark-grey-3) !important;
 				}
 
-				&:nth-child(even) {
-					&,
-					td:first-child {
-						background-color: var(--dark-grey-2) !important;
-					}
+				&:nth-child(even) td {
+					background-color: var(--dark-grey-2) !important;
 				}
 
 				&:hover,
@@ -1318,8 +1970,31 @@ export default {
 				&.highlighted {
 					th,
 					td {
-						&,
-						&:first-child {
+						background-color: var(--dark-grey-4) !important;
+					}
+				}
+
+				&.updated td:first-child {
+					background-color: var(--primary-color) !important;
+				}
+			}
+
+			&.has-checkboxes tbody tr {
+				td:nth-child(2) {
+					background-color: var(--dark-grey-3) !important;
+				}
+				&:nth-child(even) td:nth-child(2) {
+					background-color: var(--dark-grey-2) !important;
+				}
+				&.updated td:first-child {
+					background-color: var(--primary-color) !important;
+				}
+				&:hover,
+				&:focus,
+				&.highlighted {
+					th,
+					td {
+						&:nth-child(2) {
 							background-color: var(--dark-grey-4) !important;
 						}
 					}
@@ -1331,6 +2006,12 @@ export default {
 		.table-footer {
 			background-color: var(--dark-grey-3);
 			color: var(--light-grey-2);
+		}
+
+		.table-no-results {
+			background-color: var(--dark-grey-3);
+			color: var(--light-grey-2);
+			border-color: var(--dark-grey) !important;
 		}
 
 		.label.control {
@@ -1416,8 +2097,14 @@ export default {
 
 			tbody {
 				tr {
-					&.highlighted {
-						background-color: var(--light-grey);
+					&.updated {
+						td:first-child {
+							background-color: var(--primary-color) !important;
+						}
+					}
+
+					&:nth-child(even) td {
+						background-color: rgb(250, 250, 250);
 					}
 
 					td {
@@ -1427,50 +2114,99 @@ export default {
 						&:last-child {
 							border-width: 0 0 1px;
 						}
+
+						/deep/ .row-options {
+							display: flex;
+							justify-content: space-evenly;
+
+							.icon-with-button {
+								height: 30px;
+								width: 30px;
+							}
+						}
+					}
+
+					&.removed {
+						filter: grayscale(100%);
+						cursor: not-allowed;
+						user-select: none;
+
+						td .removed-overlay {
+							position: absolute;
+							top: 0;
+							left: 0;
+							bottom: 0;
+							right: 5px;
+							z-index: 5;
+						}
 					}
 				}
 			}
 		}
 
-		table thead tr,
-		table tbody tr {
-			th,
-			td {
-				position: relative;
-				white-space: nowrap;
-				text-overflow: ellipsis;
-				overflow: hidden;
-
-				&:first-child {
-					position: sticky;
-					left: 0;
-					background-color: var(--white);
-					z-index: 2;
-				}
-
-				.resizer {
-					height: 100%;
-					width: 5px;
-					background-color: transparent;
-					cursor: col-resize;
-					position: absolute;
-					right: 0;
-					top: 0;
-				}
-			}
-
-			&:nth-child(even) td:first-child {
-				background-color: #fafafa;
-			}
-
-			&:hover,
-			&:focus,
-			&.highlighted {
+		table {
+			thead tr,
+			tbody tr {
 				th,
 				td {
-					&,
+					position: relative;
+					white-space: nowrap;
+					text-overflow: ellipsis;
+					overflow: hidden;
+					background-color: var(--white);
+
 					&:first-child {
-						background-color: var(--light-grey);
+						display: table-cell;
+						position: sticky;
+						left: 0;
+						z-index: 2;
+
+						& > .updated-tooltip {
+							position: absolute;
+							top: 0;
+							left: 0;
+							bottom: 0;
+							right: 0;
+						}
+					}
+
+					.resizer {
+						height: 100%;
+						width: 5px;
+						background-color: transparent;
+						cursor: col-resize;
+						position: absolute;
+						right: 0;
+						top: 0;
+					}
+				}
+
+				&:hover,
+				&:focus,
+				&.highlighted {
+					th,
+					td {
+						background-color: rgb(240, 240, 240);
+					}
+				}
+			}
+
+			&.has-checkboxes {
+				thead,
+				tbody {
+					tr {
+						th,
+						td {
+							&:nth-child(2) {
+								display: table-cell;
+								position: sticky;
+								left: 5px;
+								z-index: 2;
+							}
+						}
+						&.updated td:first-child {
+							background-color: var(--primary-color);
+						}
 					}
 				}
 			}
@@ -1487,19 +2223,29 @@ export default {
 		background-color: var(--white);
 	}
 
-	.table-header > div {
-		display: flex;
-		flex-direction: row;
+	.table-header {
+		& > div {
+			display: flex;
+			flex-direction: row;
 
-		> span > .control {
-			margin: 5px;
+			> span > .control {
+				margin: 5px;
+			}
+
+			.filters-indicator {
+				line-height: 46px;
+				display: flex;
+				align-items: center;
+				column-gap: 4px;
+			}
 		}
 
-		.filters-indicator {
-			line-height: 46px;
-			display: flex;
-			align-items: center;
-			column-gap: 4px;
+		@media screen and (max-width: 400px) {
+			flex-direction: column;
+
+			& > div {
+				justify-content: center;
+			}
 		}
 	}
 
@@ -1526,6 +2272,25 @@ export default {
 				top: 18px;
 			}
 		}
+
+		@media screen and (max-width: 600px) {
+			flex-direction: column;
+
+			.page-controls,
+			.page-size > .control {
+				justify-content: center;
+			}
+		}
+	}
+
+	.table-no-results {
+		display: flex;
+		flex-direction: row;
+		justify-content: center;
+		border-bottom: 1px solid var(--light-grey-2);
+		font-size: 18px;
+		line-height: 50px;
+		background-color: var(--white);
 	}
 }
 
@@ -1549,6 +2314,7 @@ export default {
 			width: 100%;
 		}
 		& > input,
+		/deep/ & > div > input,
 		& > select,
 		& > .button,
 		&.label {
@@ -1575,7 +2341,7 @@ export default {
 		}
 	}
 
-	@media screen and (max-width: 500px) {
+	@media screen and (max-width: 600px) {
 		&.advanced-filter {
 			flex-wrap: wrap;
 			.control.select {
@@ -1586,22 +2352,33 @@ export default {
 			}
 			.control {
 				margin-bottom: 0 !important;
-				&:nth-child(1) select {
+				&:nth-child(1) > select {
 					border-radius: 5px 0 0 0;
 				}
-				&:nth-child(2) select {
+				&:nth-child(2) > select {
 					border-radius: 0 5px 0 0;
 				}
-				&:nth-child(3) input {
-					border-radius: 0 0 0 5px;
+				/deep/ &:nth-child(3) {
+					& > input,
+					& > div > input,
+					& > select {
+						border-radius: 0 0 0 5px;
+					}
 				}
-				&:nth-child(4) button {
+				&:nth-child(4) > button {
 					border-radius: 0 0 5px 0;
 				}
 			}
 		}
 	}
 }
+
+.advanced-filter {
+	.control {
+		position: relative;
+	}
+}
+
 .advanced-filter-bottom {
 	display: flex;
 
@@ -1615,7 +2392,7 @@ export default {
 	}
 }
 
-.bulk-popup {
+/deep/ .bulk-popup {
 	display: flex;
 	position: fixed;
 	flex-direction: row;
@@ -1641,6 +2418,30 @@ export default {
 		top: 6px;
 		color: var(--dark-grey);
 		cursor: move;
+	}
+
+	.bulk-actions {
+		display: flex;
+		flex-direction: row;
+		width: 100%;
+		justify-content: space-evenly;
+
+		.material-icons {
+			position: relative;
+			top: 6px;
+			margin-left: 5px;
+			cursor: pointer;
+			color: var(--primary-color);
+			height: 25px;
+
+			&:hover,
+			&:focus {
+				filter: brightness(90%);
+			}
+		}
+		.delete-icon {
+			color: var(--dark-red);
+		}
 	}
 }
 </style>

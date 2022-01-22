@@ -3,7 +3,7 @@
 		<div class="container">
 			<div class="footer-content">
 				<div id="footer-copyright">
-					<p>© Copyright {{ siteSettings.sitename }} 2015 - 2021</p>
+					<p>© Copyright {{ siteSettings.sitename }} 2015 - 2022</p>
 				</div>
 				<router-link id="footer-logo" to="/">
 					<img

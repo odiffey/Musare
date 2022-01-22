@@ -184,14 +184,14 @@ router.beforeEach((to, from, next) => {
 	if (to.meta.loginRequired || to.meta.adminRequired || to.meta.guestsOnly) {
 		const gotData = () => {
 			if (to.meta.loginRequired && !store.state.user.auth.loggedIn)
-				next({ path: "/login" });
+				next({ path: "/login", query: "" });
 			else if (
 				to.meta.adminRequired &&
 				store.state.user.auth.role !== "admin"
 			)
-				next({ path: "/" });
+				next({ path: "/", query: "" });
 			else if (to.meta.guestsOnly && store.state.user.auth.loggedIn)
-				next({ path: "/" });
+				next({ path: "/", query: "" });
 			else next();
 		};
 
@@ -246,7 +246,7 @@ app.use(router);
 		store.dispatch("user/auth/banUser", res.data.ban)
 	);
 
-	ws.socket.on("event:user.username.updated", res =>
+	ws.socket.on("keep.event:user.username.updated", res =>
 		store.dispatch("user/auth/updateUsername", res.data.username)
 	);
 

@@ -1,5 +1,4 @@
 import async from "async";
-import config from "config";
 import mongoose from "mongoose";
 import CoreClass from "../core";
 
@@ -207,71 +206,6 @@ class _SongsModule extends CoreClass {
 	}
 
 	/**
-	 * Gets songs data
-	 *
-	 * @param {object} payload - object containing the payload
-	 * @param {string} payload.page - the page
-	 * @param {string} payload.pageSize - the page size
-	 * @param {string} payload.properties - the properties to return for each song
-	 * @param {string} payload.sort - the sort object
-	 * @param {string} payload.queries - the queries array
-	 * @param {string} payload.operator - the operator for queries
-	 * @returns {Promise} - returns a promise (resolve, reject)
-	 */
-	GET_DATA(payload) {
-		return new Promise((resolve, reject) => {
-			const { page, pageSize, properties, sort, queries, operator } = payload;
-
-			console.log("GET_DATA", payload);
-
-			const newQueries = queries.map(query => {
-				const { data, filter, filterType } = query;
-				const newQuery = {};
-				if (filterType === "regex") {
-					newQuery[filter.property] = new RegExp(`${data.slice(1, data.length - 1)}`, "i");
-				} else if (filterType === "contains") {
-					newQuery[filter.property] = new RegExp(`${data.replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&")}`, "i");
-				} else if (filterType === "exact") {
-					newQuery[filter.property] = data.toString();
-				}
-				return newQuery;
-			});
-
-			const queryObject = {};
-			if (newQueries.length > 0) {
-				if (operator === "and") queryObject.$and = newQueries;
-				else if (operator === "or") queryObject.$or = newQueries;
-				else if (operator === "nor") queryObject.$nor = newQueries;
-			}
-
-			async.waterfall(
-				[
-					next => {
-						SongsModule.SongModel.find(queryObject).count((err, count) => {
-							next(err, count);
-						});
-					},
-
-					(count, next) => {
-						SongsModule.SongModel.find(queryObject)
-							.sort(sort)
-							.skip(pageSize * (page - 1))
-							.limit(pageSize)
-							.select(properties.join(" "))
-							.exec((err, songs) => {
-								next(err, count, songs);
-							});
-					}
-				],
-				(err, count, songs) => {
-					if (err && err !== true) return reject(new Error(err));
-					return resolve({ data: songs, count });
-				}
-			);
-		});
-	}
-
-	/**
 	 * Makes sure that if a song is not currently in the songs db, to add it
 	 *
 	 * @param {object} payload - an object containing the payload
@@ -307,15 +241,8 @@ class _SongsModule extends CoreClass {
 								return next(null, song);
 							});
 						} else {
-							const status =
-								(!payload.userId && config.get("hideAnonymousSongs")) ||
-								(payload.automaticallyRequested && config.get("hideAutomaticallyRequestedSongs"))
-									? "hidden"
-									: "unverified";
-
 							const song = new SongsModule.SongModel({
 								...youtubeSong,
-								status,
 								requestedBy: payload.userId,
 								requestedAt: Date.now()
 							});
@@ -398,7 +325,7 @@ class _SongsModule extends CoreClass {
 					},
 
 					(song, next) => {
-						const { _id, youtubeId, title, artists, thumbnail, duration, status } = song;
+						const { _id, youtubeId, title, artists, thumbnail, duration, verified } = song;
 						const trimmedSong = {
 							_id,
 							youtubeId,
@@ -406,7 +333,7 @@ class _SongsModule extends CoreClass {
 							artists,
 							thumbnail,
 							duration,
-							status
+							verified
 						};
 						this.log("INFO", `Going to update playlists now for song ${_id}`);
 						DBModule.runJob("GET_MODEL", { modelName: "playlist" }, this)
@@ -454,7 +381,7 @@ class _SongsModule extends CoreClass {
 					},
 
 					(song, next) => {
-						const { _id, youtubeId, title, artists, thumbnail, duration, status } = song;
+						const { _id, youtubeId, title, artists, thumbnail, duration, verified } = song;
 						this.log("INFO", `Going to update stations now for song ${_id}`);
 						DBModule.runJob("GET_MODEL", { modelName: "station" }, this)
 							.then(stationModel => {
@@ -467,7 +394,7 @@ class _SongsModule extends CoreClass {
 											"queue.$.artists": artists,
 											"queue.$.thumbnail": thumbnail,
 											"queue.$.duration": duration,
-											"queue.$.status": status
+											"queue.$.verified": verified
 										}
 									},
 									err => {
@@ -549,6 +476,283 @@ class _SongsModule extends CoreClass {
 					});
 
 					return resolve(song);
+				}
+			)
+		);
+	}
+
+	/**
+	 * Gets multiple songs from id from Mongo and updates the cache with it
+	 *
+	 * @param {object} payload - an object containing the payload
+	 * @param {Array} payload.songIds - the ids of the songs we are trying to update
+	 * @param {string} payload.oldStatus - old status of song being updated (optional)
+	 * @returns {Promise} - returns a promise (resolve, reject)
+	 */
+	async UPDATE_SONGS(payload) {
+		const playlistModel = await DBModule.runJob("GET_MODEL", { modelName: "playlist" }, this);
+		const stationModel = await DBModule.runJob("GET_MODEL", { modelName: "station" }, this);
+
+		return new Promise((resolve, reject) =>
+			async.waterfall(
+				[
+					// Get songs from Mongo
+					next => {
+						const { songIds } = payload;
+
+						SongsModule.SongModel.find({ _id: songIds }, next);
+					},
+
+					// Any songs that were not in Mongo, remove from cache, if they're in the cache
+					(songs, next) => {
+						const { songIds } = payload;
+
+						async.eachLimit(
+							songIds,
+							1,
+							(songId, next) => {
+								if (songs.findIndex(song => song._id.toString() === songId) === -1) {
+									// NOTE: could be made lower priority
+									CacheModule.runJob("HDEL", {
+										table: "songs",
+										key: songId
+									});
+									next();
+								} else next();
+							},
+							() => {
+								next(null, songs);
+							}
+						);
+					},
+
+					// Adds/updates all songs in the cache
+					(songs, next) => {
+						async.eachLimit(
+							songs,
+							1,
+							(song, next) => {
+								CacheModule.runJob(
+									"HSET",
+									{
+										table: "songs",
+										key: song._id,
+										value: song
+									},
+									this
+								)
+									.then(() => {
+										next();
+									})
+									.catch(next);
+							},
+							() => {
+								next(null, songs);
+							}
+						);
+					},
+
+					// Updates all playlists that the songs are in by setting the new trimmed song
+					(songs, next) => {
+						const trimmedSongs = songs.map(song => {
+							const { _id, youtubeId, title, artists, thumbnail, duration, verified } = song;
+							return {
+								_id,
+								youtubeId,
+								title,
+								artists,
+								thumbnail,
+								duration,
+								verified
+							};
+						});
+
+						const playlistsToUpdate = new Set();
+
+						async.eachLimit(
+							trimmedSongs,
+							1,
+							(trimmedSong, next) => {
+								async.waterfall(
+									[
+										next => {
+											playlistModel.updateMany(
+												{ "songs._id": trimmedSong._id },
+												{ $set: { "songs.$": trimmedSong } },
+												next
+											);
+										},
+
+										(res, next) => {
+											playlistModel.find({ "songs._id": trimmedSong._id }, next);
+										},
+
+										(playlists, next) => {
+											playlists.forEach(playlist => {
+												playlistsToUpdate.add(playlist._id.toString());
+											});
+
+											next();
+										}
+									],
+									next
+								);
+							},
+							err => {
+								next(err, songs, playlistsToUpdate);
+							}
+						);
+					},
+
+					// Updates all playlists that the songs are in
+					(songs, playlistsToUpdate, next) => {
+						async.eachLimit(
+							playlistsToUpdate,
+							1,
+							(playlistId, next) => {
+								PlaylistsModule.runJob(
+									"UPDATE_PLAYLIST",
+									{
+										playlistId
+									},
+									this
+								)
+									.then(() => {
+										next();
+									})
+									.catch(err => {
+										next(err);
+									});
+							},
+							err => {
+								next(err, songs);
+							}
+						);
+					},
+
+					// Updates all station queues that the songs are in by setting the new trimmed song
+					(songs, next) => {
+						const stationsToUpdate = new Set();
+
+						async.eachLimit(
+							songs,
+							1,
+							(song, next) => {
+								async.waterfall(
+									[
+										next => {
+											const { youtubeId, title, artists, thumbnail, duration, verified } = song;
+											stationModel.updateMany(
+												{ "queue._id": song._id },
+												{
+													$set: {
+														"queue.$.youtubeId": youtubeId,
+														"queue.$.title": title,
+														"queue.$.artists": artists,
+														"queue.$.thumbnail": thumbnail,
+														"queue.$.duration": duration,
+														"queue.$.verified": verified
+													}
+												},
+												next
+											);
+										},
+
+										(res, next) => {
+											stationModel.find({ "queue._id": song._id }, next);
+										},
+
+										(stations, next) => {
+											stations.forEach(station => {
+												stationsToUpdate.add(station._id.toString());
+											});
+
+											next();
+										}
+									],
+									next
+								);
+							},
+							err => {
+								next(err, songs, stationsToUpdate);
+							}
+						);
+					},
+
+					// Updates all playlists that the songs are in
+					(songs, stationsToUpdate, next) => {
+						async.eachLimit(
+							stationsToUpdate,
+							1,
+							(stationId, next) => {
+								StationsModule.runJob(
+									"UPDATE_STATION",
+									{
+										stationId
+									},
+									this
+								)
+									.then(() => {
+										next();
+									})
+									.catch(err => {
+										next(err);
+									});
+							},
+							err => {
+								next(err, songs);
+							}
+						);
+					},
+
+					// Autofill the genre playlists of all genres of all songs
+					(songs, next) => {
+						const genresToAutofill = new Set();
+
+						songs.forEach(song => {
+							song.genres.forEach(genre => {
+								genresToAutofill.add(genre);
+							});
+						});
+
+						async.eachLimit(
+							genresToAutofill,
+							1,
+							(genre, next) => {
+								PlaylistsModule.runJob("AUTOFILL_GENRE_PLAYLIST", { genre }, this)
+									.then(() => {
+										next();
+									})
+									.catch(err => next(err));
+							},
+							err => {
+								next(err, songs);
+							}
+						);
+					},
+
+					// Send event that the song was updated
+					(songs, next) => {
+						async.eachLimit(
+							songs,
+							1,
+							(song, next) => {
+								CacheModule.runJob("PUB", {
+									channel: "song.updated",
+									value: { songId: song._id, oldStatus: null }
+								});
+								next();
+							},
+							() => {
+								next();
+							}
+						);
+					}
+				],
+				err => {
+					if (err && err !== true) return reject(new Error(err));
+
+					return resolve();
 				}
 			)
 		);
@@ -683,7 +887,6 @@ class _SongsModule extends CoreClass {
 	 *
 	 * @param {object} payload - object that contains the payload
 	 * @param {string} payload.query - the query
-	 * @param {string} payload.includeHidden - include hidden songs
 	 * @param {string} payload.includeUnverified - include unverified songs
 	 * @param {string} payload.includeVerified - include verified songs
 	 * @param {string} payload.trimmed - include trimmed songs
@@ -695,11 +898,10 @@ class _SongsModule extends CoreClass {
 			async.waterfall(
 				[
 					next => {
-						const statuses = [];
-						if (payload.includeHidden) statuses.push("hidden");
-						if (payload.includeUnverified) statuses.push("unverified");
-						if (payload.includeVerified) statuses.push("verified");
-						if (statuses.length === 0) return next("No statuses have been included.");
+						const isVerified = [];
+						if (payload.includeUnverified) isVerified.push(false);
+						if (payload.includeVerified) isVerified.push(true);
+						if (isVerified.length === 0) return next("No verified status has been included.");
 
 						let { query } = payload;
 
@@ -711,11 +913,11 @@ class _SongsModule extends CoreClass {
 						const filterArray = [
 							{
 								title: new RegExp(`${query}`, "i"),
-								status: { $in: statuses }
+								verified: { $in: isVerified }
 							},
 							{
 								artists: new RegExp(`${query}`, "i"),
-								status: { $in: statuses }
+								verified: { $in: isVerified }
 							}
 						];
 
@@ -754,7 +956,7 @@ class _SongsModule extends CoreClass {
 						else if (payload.trimmed) {
 							next(null, {
 								songs: data.songs.map(song => {
-									const { _id, youtubeId, title, artists, thumbnail, duration, status } = song;
+									const { _id, youtubeId, title, artists, thumbnail, duration, verified } = song;
 									return {
 										_id,
 										youtubeId,
@@ -762,7 +964,7 @@ class _SongsModule extends CoreClass {
 										artists,
 										thumbnail,
 										duration,
-										status
+										verified
 									};
 								}),
 								...data
@@ -794,7 +996,7 @@ class _SongsModule extends CoreClass {
 				[
 					next => {
 						playlistModel.countDocuments(
-							{ songs: { $elemMatch: { youtubeId: payload.youtubeId } }, type: "user-liked" },
+							{ songs: { $elemMatch: { _id: payload.songId } }, type: "user-liked" },
 							(err, likes) => {
 								if (err) return next(err);
 								return next(null, likes);
@@ -804,7 +1006,7 @@ class _SongsModule extends CoreClass {
 
 					(likes, next) => {
 						playlistModel.countDocuments(
-							{ songs: { $elemMatch: { youtubeId: payload.youtubeId } }, type: "user-disliked" },
+							{ songs: { $elemMatch: { _id: payload.songId } }, type: "user-disliked" },
 							(err, dislikes) => {
 								if (err) return next(err);
 								return next(err, { likes, dislikes });
@@ -883,7 +1085,7 @@ class _SongsModule extends CoreClass {
 			async.waterfall(
 				[
 					next => {
-						SongsModule.SongModel.find({ status: "verified" }, { genres: 1, _id: false }, next);
+						SongsModule.SongModel.find({ verified: true }, { genres: 1, _id: false }, next);
 					},
 
 					(songs, next) => {
@@ -957,7 +1159,7 @@ class _SongsModule extends CoreClass {
 					next => {
 						SongsModule.SongModel.find(
 							{
-								status: "verified",
+								verified: true,
 								genres: { $regex: new RegExp(`^${payload.genre.toLowerCase()}$`, "i") }
 							},
 							next
@@ -1077,9 +1279,6 @@ class _SongsModule extends CoreClass {
 						if (song) return next("This song is already in the database.", song);
 						// TODO Add err object as first param of callback
 
-						const requestedBy = user.preferences.anonymousSongRequests ? null : userId;
-						const status = !requestedBy && config.get("hideAnonymousSongs") ? "hidden" : "unverified";
-
 						return YouTubeModule.runJob("GET_SONG", { youtubeId }, this)
 							.then(response => {
 								const { song } = response;
@@ -1089,7 +1288,7 @@ class _SongsModule extends CoreClass {
 								song.explicit = false;
 								song.requestedBy = user.preferences.anonymousSongRequests ? null : userId;
 								song.requestedAt = requestedAt;
-								song.status = status;
+								song.verified = false;
 								next(null, song);
 							})
 							.catch(next);
@@ -1122,7 +1321,7 @@ class _SongsModule extends CoreClass {
 				async (err, song) => {
 					if (err && err !== "This song is already in the database.") return reject(err);
 
-					const { _id, youtubeId, title, artists, thumbnail, duration, status } = song;
+					const { _id, youtubeId, title, artists, thumbnail, duration, verified } = song;
 					const trimmedSong = {
 						_id,
 						youtubeId,
@@ -1130,7 +1329,7 @@ class _SongsModule extends CoreClass {
 						artists,
 						thumbnail,
 						duration,
-						status
+						verified
 					};
 
 					if (err && err === "This song is already in the database.")
@@ -1139,92 +1338,6 @@ class _SongsModule extends CoreClass {
 					SongsModule.runJob("UPDATE_SONG", { songId: song._id });
 
 					return resolve({ song: trimmedSong });
-				}
-			);
-		});
-	}
-
-	/**
-	 * Hides a song
-	 *
-	 * @param {object} payload - The payload
-	 * @param {string} payload.songId - The song id of the song
-	 * @returns {Promise} - returns promise (reject, resolve)
-	 */
-	HIDE_SONG(payload) {
-		return new Promise((resolve, reject) => {
-			const { songId } = payload;
-
-			async.waterfall(
-				[
-					next => {
-						SongsModule.SongModel.findOne({ _id: songId }, next);
-					},
-
-					// Get YouTube data from id
-					(song, next) => {
-						if (!song) return next("This song does not exist.");
-						if (song.status === "hidden") return next("This song is already hidden.");
-						// TODO Add err object as first param of callback
-						return next(null, song.status);
-					},
-
-					(oldStatus, next) => {
-						SongsModule.SongModel.updateOne({ _id: songId }, { status: "hidden" }, res =>
-							next(null, res, oldStatus)
-						);
-					},
-
-					(res, oldStatus, next) => {
-						SongsModule.runJob("UPDATE_SONG", { songId, oldStatus });
-						next();
-					}
-				],
-				async err => {
-					if (err) reject(err);
-					resolve();
-				}
-			);
-		});
-	}
-
-	/**
-	 * Unhides a song
-	 *
-	 * @param {object} payload - The payload
-	 * @param {string} payload.songId - The song id of the song
-	 * @returns {Promise} - returns promise (reject, resolve)
-	 */
-	UNHIDE_SONG(payload) {
-		return new Promise((resolve, reject) => {
-			const { songId } = payload;
-
-			async.waterfall(
-				[
-					next => {
-						SongsModule.SongModel.findOne({ _id: songId }, next);
-					},
-
-					// Get YouTube data from id
-					(song, next) => {
-						if (!song) return next("This song does not exist.");
-						if (song.status !== "hidden") return next("This song is not hidden.");
-						// TODO Add err object as first param of callback
-						return next();
-					},
-
-					next => {
-						SongsModule.SongModel.updateOne({ _id: songId }, { status: "unverified" }, next);
-					},
-
-					(res, next) => {
-						SongsModule.runJob("UPDATE_SONG", { songId, oldStatus: "hidden" });
-						next();
-					}
-				],
-				async err => {
-					if (err) reject(err);
-					resolve();
 				}
 			);
 		});
@@ -1276,7 +1389,7 @@ class _SongsModule extends CoreClass {
 										},
 
 										(song, next) => {
-											const { _id, title, artists, thumbnail, duration, status } = song;
+											const { _id, title, artists, thumbnail, duration, verified } = song;
 											const trimmedSong = {
 												_id,
 												youtubeId,
@@ -1284,7 +1397,7 @@ class _SongsModule extends CoreClass {
 												artists,
 												thumbnail,
 												duration,
-												status
+												verified
 											};
 											playlistModel.updateMany(
 												{ "songs.youtubeId": song.youtubeId },
@@ -1340,6 +1453,69 @@ class _SongsModule extends CoreClass {
 					});
 				})
 				.catch(reject);
+		});
+	}
+
+	/**
+	 * Gets a list of all genres
+	 *
+	 * @returns {Promise} - returns promise (reject, resolve)
+	 */
+	GET_GENRES() {
+		return new Promise((resolve, reject) => {
+			async.waterfall(
+				[
+					next => {
+						SongsModule.SongModel.distinct("genres", next);
+					}
+				],
+				(err, genres) => {
+					if (err) reject(err);
+					resolve({ genres });
+				}
+			);
+		});
+	}
+
+	/**
+	 * Gets a list of all artists
+	 *
+	 * @returns {Promise} - returns promise (reject, resolve)
+	 */
+	GET_ARTISTS() {
+		return new Promise((resolve, reject) => {
+			async.waterfall(
+				[
+					next => {
+						SongsModule.SongModel.distinct("artists", next);
+					}
+				],
+				(err, artists) => {
+					if (err) reject(err);
+					resolve({ artists });
+				}
+			);
+		});
+	}
+
+	/**
+	 * Gets a list of all tags
+	 *
+	 * @returns {Promise} - returns promise (reject, resolve)
+	 */
+	GET_TAGS() {
+		return new Promise((resolve, reject) => {
+			async.waterfall(
+				[
+					next => {
+						SongsModule.SongModel.distinct("tags", next);
+					}
+				],
+				(err, tags) => {
+					if (err) reject(err);
+					resolve({ tags });
+				}
+			);
 		});
 	}
 }

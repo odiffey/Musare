@@ -4,16 +4,6 @@
 		<div class="tabs is-centered">
 			<ul>
 				<li
-					:class="{ 'is-active': currentTab == 'test' }"
-					ref="test-tab"
-					@click="showTab('test')"
-				>
-					<router-link class="tab test" to="/admin/test">
-						<i class="material-icons">music_note</i>
-						<span>&nbsp;Test</span>
-					</router-link>
-				</li>
-				<li
 					:class="{ 'is-active': currentTab == 'songs' }"
 					ref="songs-tab"
 					@click="showTab('songs')"
@@ -100,7 +90,6 @@
 		</div>
 
 		<div class="admin-container">
-			<test v-if="currentTab == 'test'" />
 			<songs v-if="currentTab == 'songs'" />
 			<stations v-if="currentTab == 'stations'" />
 			<playlists v-if="currentTab == 'playlists'" />
@@ -111,6 +100,76 @@
 			<punishments v-if="currentTab == 'punishments'" />
 		</div>
 
+		<floating-box
+			id="keyboardShortcutsHelper"
+			ref="keyboardShortcutsHelper"
+		>
+			<template #body>
+				<div>
+					<div>
+						<span class="biggest"
+							><b>Keyboard shortcuts helper</b></span
+						>
+						<span
+							><b>Ctrl + /</b> - Toggles this keyboard shortcuts
+							helper</span
+						>
+						<span
+							><b>Ctrl + Shift + /</b> - Resets the position of
+							this keyboard shortcuts helper</span
+						>
+						<hr />
+					</div>
+					<div>
+						<span class="biggest"><b>Table</b></span>
+						<span class="bigger"><b>Navigation</b></span>
+						<span
+							><b>Up / Down arrow keys</b> - Move between
+							rows</span
+						>
+						<hr />
+					</div>
+					<div>
+						<span class="bigger"><b>Page navigation</b></span>
+						<span
+							><b>Ctrl + Left/Right arrow keys</b> - Previous/next
+							page</span
+						>
+						<span
+							><b>Ctrl + Shift + Left/Right arrow keys</b> -
+							First/last page</span
+						>
+						<hr />
+					</div>
+					<div>
+						<span class="bigger"><b>Reset localStorage</b></span>
+						<span><b>Ctrl + F5</b> - Resets localStorage</span>
+						<hr />
+					</div>
+					<div>
+						<span class="bigger"><b>Selecting</b></span>
+						<span><b>Space</b> - Selects/unselects a row</span>
+						<span><b>Ctrl + A</b> - Selects all rows</span>
+						<span
+							><b>Shift + Up/Down arrow keys</b> - Selects all
+							rows in between</span
+						>
+						<span
+							><b>Ctrl + Up/Down arrow keys</b> - Unselects all
+							rows in between</span
+						>
+						<hr />
+					</div>
+					<div>
+						<span class="bigger"><b>Popup actions</b></span>
+						<span><b>Ctrl + 1-9</b> - Execute action 1-9</span>
+						<span><b>Ctrl + 0</b> - Select action 1</span>
+						<hr />
+					</div>
+				</div>
+			</template>
+		</floating-box>
+
 		<main-footer />
 	</div>
 </template>
@@ -119,14 +178,17 @@
 import { mapGetters } from "vuex";
 import { defineAsyncComponent } from "vue";
 
+import keyboardShortcuts from "@/keyboardShortcuts";
+
 import MainHeader from "@/components/layout/MainHeader.vue";
 import MainFooter from "@/components/layout/MainFooter.vue";
+import FloatingBox from "@/components/FloatingBox.vue";
 
 export default {
 	components: {
 		MainHeader,
 		MainFooter,
-		Test: defineAsyncComponent(() => import("./tabs/Test.vue")),
+		FloatingBox,
 		Songs: defineAsyncComponent(() => import("./tabs/Songs.vue")),
 		Stations: defineAsyncComponent(() => import("./tabs/Stations.vue")),
 		Playlists: defineAsyncComponent(() => import("./tabs/Playlists.vue")),
@@ -153,16 +215,47 @@ export default {
 	},
 	mounted() {
 		this.changeTab(this.$route.path);
+
+		keyboardShortcuts.registerShortcut(
+			"admin.toggleKeyboardShortcutsHelper",
+			{
+				keyCode: 191, // '/' key
+				ctrl: true,
+				preventDefault: true,
+				handler: () => {
+					this.toggleKeyboardShortcutsHelper();
+				}
+			}
+		);
+
+		keyboardShortcuts.registerShortcut(
+			"admin.resetKeyboardShortcutsHelper",
+			{
+				keyCode: 191, // '/' key
+				ctrl: true,
+				shift: true,
+				preventDefault: true,
+				handler: () => {
+					this.resetKeyboardShortcutsHelper();
+				}
+			}
+		);
 	},
 	beforeUnmount() {
 		this.socket.dispatch("apis.leaveRooms");
+
+		const shortcutNames = [
+			"admin.toggleKeyboardShortcutsHelper",
+			"admin.resetKeyboardShortcutsHelper"
+		];
+
+		shortcutNames.forEach(shortcutName => {
+			keyboardShortcuts.unregisterShortcut(shortcutName);
+		});
 	},
 	methods: {
 		changeTab(path) {
 			switch (path) {
-				case "/admin/test":
-					this.showTab("test");
-					break;
 				case "/admin/songs":
 					this.showTab("songs");
 					break;
@@ -209,6 +302,12 @@ export default {
 				});
 			this.currentTab = tab;
 			localStorage.setItem("lastAdminPage", tab);
+		},
+		toggleKeyboardShortcutsHelper() {
+			this.$refs.keyboardShortcutsHelper.toggleBox();
+		},
+		resetKeyboardShortcutsHelper() {
+			this.$refs.keyboardShortcutsHelper.resetBox();
 		}
 	}
 };
@@ -348,6 +447,22 @@ export default {
 	.is-active .tab {
 		font-weight: 600;
 		border-width: 3px;
+	}
+}
+
+#keyboardShortcutsHelper {
+	.box-body {
+		.biggest {
+			font-size: 18px;
+		}
+
+		.bigger {
+			font-size: 16px;
+		}
+
+		span {
+			display: block;
+		}
 	}
 }
 

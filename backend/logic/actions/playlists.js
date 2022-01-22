@@ -230,30 +230,145 @@ CacheModule.runJob("SUB", {
 	}
 });
 
+CacheModule.runJob("SUB", {
+	channel: "playlist.updated",
+	cb: async data => {
+		const playlistModel = await DBModule.runJob("GET_MODEL", {
+			modelName: "playlist"
+		});
+
+		playlistModel.findOne(
+			{ _id: data.playlistId },
+			["_id", "displayName", "type", "privacy", "songs", "createdBy", "createdAt", "createdFor"],
+			(err, playlist) => {
+				const newPlaylist = {
+					...playlist._doc,
+					songsCount: playlist.songs.length,
+					songsLength: playlist.songs.reduce((previous, current) => ({
+						duration: previous.duration + current.duration
+					})).duration
+				};
+				delete newPlaylist.songs;
+				WSModule.runJob("EMIT_TO_ROOMS", {
+					rooms: ["admin.playlists"],
+					args: ["event:admin.playlist.updated", { data: { playlist: newPlaylist } }]
+				});
+			}
+		);
+	}
+});
+
 export default {
 	/**
-	 * Gets all playlists
+	 * Gets playlists, used in the admin playlists page by the AdvancedTable component
 	 *
 	 * @param {object} session - the session object automatically added by the websocket
-	 * @param {Function} cb - gets called with the result
+	 * @param page - the page
+	 * @param pageSize - the size per page
+	 * @param properties - the properties to return for each playlist
+	 * @param sort - the sort object
+	 * @param queries - the queries array
+	 * @param operator - the operator for queries
+	 * @param cb
 	 */
-	index: isAdminRequired(async function index(session, cb) {
-		const playlistModel = await DBModule.runJob("GET_MODEL", { modelName: "playlist" }, this);
-
+	getData: isAdminRequired(async function getSet(session, page, pageSize, properties, sort, queries, operator, cb) {
 		async.waterfall(
 			[
 				next => {
-					playlistModel.find({}).sort({ createdAt: "desc" }).exec(next);
+					DBModule.runJob(
+						"GET_DATA",
+						{
+							page,
+							pageSize,
+							properties,
+							sort,
+							queries,
+							operator,
+							modelName: "playlist",
+							blacklistedProperties: [],
+							specialProperties: {
+								totalLength: [
+									{
+										$addFields: {
+											totalLength: { $sum: "$songs.duration" }
+										}
+									}
+								],
+								songsCount: [
+									{
+										$addFields: {
+											songsCount: { $size: "$songs" }
+										}
+									}
+								],
+								createdBy: [
+									{
+										$addFields: {
+											createdByOID: {
+												$convert: {
+													input: "$createdBy",
+													to: "objectId",
+													onError: "unknown",
+													onNull: "unknown"
+												}
+											}
+										}
+									},
+									{
+										$lookup: {
+											from: "users",
+											localField: "createdByOID",
+											foreignField: "_id",
+											as: "createdByUser"
+										}
+									},
+									{
+										$unwind: {
+											path: "$createdByUser",
+											preserveNullAndEmptyArrays: true
+										}
+									},
+									{
+										$addFields: {
+											createdByUsername: {
+												$cond: [
+													{ $eq: ["$createdBy", "Musare"] },
+													"Musare",
+													{ $ifNull: ["$createdByUser.username", "unknown"] }
+												]
+											}
+										}
+									},
+									{
+										$project: {
+											createdByOID: 0,
+											createdByUser: 0
+										}
+									}
+								]
+							},
+							specialQueries: {
+								createdBy: newQuery => ({ $or: [newQuery, { createdByUsername: newQuery.createdBy }] })
+							}
+						},
+						this
+					)
+						.then(response => {
+							next(null, response);
+						})
+						.catch(err => {
+							next(err);
+						});
 				}
 			],
-			async (err, playlists) => {
+			async (err, response) => {
 				if (err) {
 					err = await UtilsModule.runJob("GET_ERROR", { error: err }, this);
-					this.log("ERROR", "PLAYLISTS_INDEX", `Indexing playlists failed. "${err}"`);
+					this.log("ERROR", "PLAYLISTS_GET_DATA", `Failed to get data from playlists. "${err}"`);
 					return cb({ status: "error", message: err });
 				}
-				this.log("SUCCESS", "PLAYLISTS_INDEX", "Indexing playlists successful.");
-				return cb({ status: "success", data: { playlists } });
+				this.log("SUCCESS", "PLAYLISTS_GET_DATA", `Got data from playlists successfully.`);
+				return cb({ status: "success", message: "Successfully got data from playlists.", data: response });
 			}
 		);
 	}),
@@ -798,7 +913,18 @@ export default {
 			[
 				next => {
 					if (!playlistId) return next("No playlist id.");
-					return playlistModel.findById(playlistId, next);
+					return next();
+				},
+
+				next => {
+					PlaylistsModule.runJob("GET_PLAYLIST", { playlistId }, this)
+						.then(playlist => {
+							if (!playlist || playlist.createdBy !== session.userId)
+								return next("Something went wrong when trying to get the playlist");
+
+							return next(null, playlist);
+						})
+						.catch(next);
 				},
 
 				(playlist, next) => {
@@ -865,6 +991,22 @@ export default {
 					if (!playlistId) return next("Please provide a playlist.");
 					if (!song || !song.youtubeId) return next("You must provide a song to reposition.");
 					return next();
+				},
+
+				next => {
+					PlaylistsModule.runJob("GET_PLAYLIST", { playlistId }, this)
+						.then(playlist => {
+							if (!playlist || playlist.createdBy !== session.userId) {
+								return DBModule.runJob("GET_MODEL", { modelName: "user" }, this).then(userModel => {
+									userModel.findOne({ _id: session.userId }, (err, user) => {
+										if (user && user.role === "admin") return next();
+										return next("Something went wrong when trying to get the playlist");
+									});
+								});
+							}
+							return next();
+						})
+						.catch(next);
 				},
 
 				// remove song from playlist
@@ -945,20 +1087,27 @@ export default {
 				next => {
 					PlaylistsModule.runJob("GET_PLAYLIST", { playlistId }, this)
 						.then(playlist => {
-							if (!playlist || playlist.createdBy !== session.userId)
-								return next("Something went wrong when trying to get the playlist");
-
-							return async.each(
-								playlist.songs,
-								(song, nextSong) => {
-									if (song.youtubeId === youtubeId)
-										return next("That song is already in the playlist");
-									return nextSong();
-								},
-								err => next(err, playlist)
-							);
+							if (!playlist || playlist.createdBy !== session.userId) {
+								DBModule.runJob("GET_MODEL", { modelName: "user" }, this).then(userModel => {
+									userModel.findOne({ _id: session.userId }, (err, user) => {
+										if (user && user.role === "admin") return next(null, playlist);
+										return next("Something went wrong when trying to get the playlist");
+									});
+								});
+							} else next(null, playlist);
 						})
 						.catch(next);
+				},
+
+				(playlist, next) => {
+					async.each(
+						playlist.songs,
+						(song, nextSong) => {
+							if (song.youtubeId === youtubeId) return next("That song is already in the playlist");
+							return nextSong();
+						},
+						err => next(err, playlist)
+					);
 				},
 
 				(playlist, next) => {
@@ -1093,6 +1242,11 @@ export default {
 						userId: session.userId,
 						privacy: playlist.privacy
 					}
+				});
+
+				CacheModule.runJob("PUB", {
+					channel: "playlist.updated",
+					value: { playlistId }
 				});
 
 				if (ratings && (playlist.type === "user-liked" || playlist.type === "user-disliked")) {
@@ -1255,7 +1409,14 @@ export default {
 				},
 
 				(playlist, next) => {
-					if (!playlist || playlist.createdBy !== session.userId) return next("Playlist not found.");
+					if (!playlist || playlist.createdBy !== session.userId) {
+						return DBModule.runJob("GET_MODEL", { modelName: "user" }, this).then(userModel => {
+							userModel.findOne({ _id: session.userId }, (err, user) => {
+								if (user && user.role === "admin") return next(null, playlist);
+								return next("Something went wrong when trying to get the playlist");
+							});
+						});
+					}
 
 					return next(null, playlist);
 				}
@@ -1321,6 +1482,22 @@ export default {
 					if (!youtubeId || typeof youtubeId !== "string") return next("Invalid song id.");
 					if (!playlistId || typeof youtubeId !== "string") return next("Invalid playlist id.");
 					return next();
+				},
+
+				next => {
+					PlaylistsModule.runJob("GET_PLAYLIST", { playlistId }, this)
+						.then(playlist => {
+							if (!playlist || playlist.createdBy !== session.userId) {
+								return DBModule.runJob("GET_MODEL", { modelName: "user" }, this).then(userModel => {
+									userModel.findOne({ _id: session.userId }, (err, user) => {
+										if (user && user.role === "admin") return next();
+										return next("Something went wrong when trying to get the playlist");
+									});
+								});
+							}
+							return next();
+						})
+						.catch(next);
 				},
 
 				// remove song from playlist
@@ -1475,6 +1652,11 @@ export default {
 					}
 				});
 
+				CacheModule.runJob("PUB", {
+					channel: "playlist.updated",
+					value: { playlistId }
+				});
+
 				return cb({
 					status: "success",
 					message: "Song has been successfully removed from playlist",
@@ -1547,6 +1729,11 @@ export default {
 						userId: session.userId,
 						privacy: playlist.privacy
 					}
+				});
+
+				CacheModule.runJob("PUB", {
+					channel: "playlist.updated",
+					value: { playlistId }
 				});
 
 				ActivitiesModule.runJob("ADD_ACTIVITY", {
@@ -1778,6 +1965,11 @@ export default {
 					}
 				});
 
+				CacheModule.runJob("PUB", {
+					channel: "playlist.updated",
+					value: { playlistId }
+				});
+
 				ActivitiesModule.runJob("ADD_ACTIVITY", {
 					userId: session.userId,
 					type: "playlist__edit_privacy",
@@ -1850,6 +2042,11 @@ export default {
 						}
 					});
 				}
+
+				CacheModule.runJob("PUB", {
+					channel: "playlist.updated",
+					value: { playlistId }
+				});
 
 				return cb({
 					status: "success",
