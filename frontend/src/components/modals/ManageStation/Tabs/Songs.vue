@@ -174,7 +174,7 @@ export default {
 };
 </script>
 
-<style lang="scss">
+<style lang="less">
 .search {
 	.musare-search,
 	.universal-item:not(:last-of-type) {

@@ -1,5 +1,8 @@
 <template>
-	<nav class="nav is-info" :class="{ transparent }">
+	<nav
+		class="nav is-info"
+		:class="{ transparent, 'hide-logged-out': !loggedIn && hideLoggedOut }"
+	>
 		<div class="nav-left">
 			<router-link v-if="!hideLogo" class="nav-item is-brand" to="/">
 				<img
@@ -25,6 +28,26 @@
 		</span>
 
 		<div class="nav-right nav-menu" :class="{ 'is-active': isMobile }">
+			<div
+				class="nav-item"
+				id="nightmode-toggle"
+				@click="toggleNightmode()"
+			>
+				<span
+					:class="{
+						'material-icons': true,
+						'night-mode-toggle': true,
+						'night-mode-on': localNightmode
+					}"
+					:content="`${
+						localNightmode ? 'Disable' : 'Enable'
+					} Nightmode`"
+					v-tippy
+				>
+					{{ localNightmode ? "dark_mode" : "light_mode" }}
+				</span>
+				<span class="night-mode-label">Toggle Nightmode</span>
+			</div>
 			<span v-if="loggedIn" class="grouped">
 				<router-link
 					v-if="role === 'admin'"
@@ -49,7 +72,12 @@
 			</span>
 			<span v-if="!loggedIn && !hideLoggedOut" class="grouped">
 				<a class="nav-item" @click="openModal('login')">Login</a>
-				<a class="nav-item" @click="openModal('register')">Register</a>
+				<a
+					v-if="!siteSettings.registrationDisabled"
+					class="nav-item"
+					@click="openModal('register')"
+					>Register</a
+				>
 			</span>
 		</div>
 
@@ -64,6 +92,8 @@
 import { mapState, mapGetters, mapActions } from "vuex";
 import { defineAsyncComponent } from "vue";
 
+import Toast from "toasters";
+
 export default {
 	components: {
 		ChristmasLights: defineAsyncComponent(() =>
@@ -77,12 +107,14 @@ export default {
 	},
 	data() {
 		return {
+			localNightmode: false,
 			isMobile: false,
 			frontendDomain: "",
 			siteSettings: {
 				logo_white: "",
 				sitename: "",
-				christmas: false
+				christmas: false,
+				registrationDisabled: false
 			},
 			windowWidth: 0
 		};
@@ -99,6 +131,12 @@ export default {
 			socket: "websockets/getSocket"
 		})
 	},
+	watch: {
+		nightmode(nightmode) {
+			if (this.localNightmode !== nightmode)
+				this.toggleNightmode(nightmode);
+		}
+	},
 	async mounted() {
 		this.frontendDomain = await lofig.get("frontendDomain");
 		this.siteSettings = await lofig.get("siteSettings");
@@ -109,6 +147,23 @@ export default {
 		});
 	},
 	methods: {
+		toggleNightmode(toggle) {
+			this.localNightmode = toggle || !this.localNightmode;
+
+			localStorage.setItem("nightmode", this.localNightmode);
+
+			if (this.loggedIn) {
+				this.socket.dispatch(
+					"users.updatePreferences",
+					{ nightmode: this.localNightmode },
+					res => {
+						if (res.status !== "success") new Toast(res.message);
+					}
+				);
+			}
+
+			this.changeNightmode(this.localNightmode);
+		},
 		onResize() {
 			this.windowWidth = window.innerWidth;
 		},
@@ -118,12 +173,14 @@ export default {
 };
 </script>
 
-<style lang="scss" scoped>
-.night-mode .nav {
-	background-color: var(--dark-grey-3) !important;
+<style lang="less" scoped>
+.night-mode {
+	.nav {
+		background-color: var(--dark-grey-3) !important;
+	}
 
 	@media screen and (max-width: 768px) {
-		.nav-menu {
+		.nav:not(.hide-logged-out) .nav-menu {
 			background-color: var(--dark-grey-3) !important;
 		}
 	}
@@ -139,15 +196,10 @@ export default {
 	position: relative;
 	background-color: var(--primary-color);
 	height: 64px;
-	border-radius: 0% 0% 33% 33% / 0% 0% 7% 7%;
-	z-index: 2;
+	z-index: 3;
 
 	&.transparent {
 		background-color: transparent !important;
-	}
-
-	@media (max-width: 650px) {
-		border-radius: 0;
 	}
 
 	.nav-left,
@@ -248,6 +300,10 @@ export default {
 				-webkit-user-drag: none;
 			}
 		}
+
+		.night-mode-label {
+			display: none;
+		}
 	}
 }
 
@@ -265,46 +321,52 @@ export default {
 }
 
 @media screen and (max-width: 768px) {
-	.nav-toggle {
-		display: block !important;
-	}
+	.nav:not(.hide-logged-out) {
+		.nav-toggle {
+			display: block !important;
+		}
 
-	.nav-menu {
-		display: none !important;
-		box-shadow: 0 4px 7px rgba(10, 10, 10, 0.1);
-		left: 0;
-		right: 0;
-		top: 100%;
-		position: absolute;
-		background: var(--white);
-	}
+		.nav-menu {
+			display: none !important;
+			box-shadow: @box-shadow-dropdown;
+			left: 0;
+			right: 0;
+			top: 100%;
+			position: absolute;
+			background: var(--white);
+		}
 
-	.nav-menu.is-active {
-		display: block !important;
+		.nav-menu.is-active {
+			display: flex !important;
+			flex-direction: column-reverse;
 
-		.nav-item {
-			color: var(--dark-grey-2);
-
-			&:hover {
+			.nav-item {
 				color: var(--dark-grey-2);
+
+				&:hover {
+					color: var(--dark-grey-2);
+				}
+
+				.night-mode-label {
+					display: inline;
+					margin-left: 5px;
+				}
+			}
+		}
+
+		.nav-menu {
+			.grouped {
+				flex-direction: column;
+			}
+			.nav-item {
+				padding: 10px 20px;
+				&:hover,
+				&:focus {
+					border-top: 0;
+					height: unset;
+				}
 			}
 		}
 	}
-
-	.nav .nav-menu .grouped {
-		flex-direction: column;
-		.nav-item {
-			padding: 10px 20px;
-			&:hover,
-			&:focus {
-				border-top: 0;
-				height: unset;
-			}
-		}
-	}
-}
-
-.christmas-mode .nav {
-	border-radius: 0 !important;
 }
 </style>

@@ -15,34 +15,32 @@
 				</router-link>
 				<div id="footer-links">
 					<a
-						:href="siteSettings.github"
+						v-for="(url, title, index) in filteredFooterLinks"
+						:key="`footer-link-${index}`"
+						:href="url"
 						target="_blank"
-						title="GitHub Repository"
-						>GitHub</a
+						:title="title"
 					>
-					<router-link title="About Musare" to="/about"
+						{{ title }}
+					</a>
+					<router-link
+						v-if="getLink('about') === true"
+						title="About Musare"
+						to="/about"
 						>About</router-link
 					>
-					<router-link title="Musare Team" to="/team"
+					<router-link
+						v-if="getLink('team') === true"
+						title="Musare Team"
+						to="/team"
 						>Team</router-link
 					>
-					<router-link title="News" to="/news">News</router-link>
-				</div>
-				<div id="footer-nightmode-toggle">
-					<p class="is-expanded checkbox-control">
-						<label class="switch">
-							<input
-								type="checkbox"
-								id="instant-nightmode"
-								v-model="localNightmode"
-							/>
-							<span class="slider round"></span>
-						</label>
-
-						<label for="instant-nightmode">
-							<p>Nightmode</p>
-						</label>
-					</p>
+					<router-link
+						v-if="getLink('news') === true"
+						title="News"
+						to="/news"
+						>News</router-link
+					>
 				</div>
 			</div>
 		</div>
@@ -50,8 +48,7 @@
 </template>
 
 <script>
-import Toast from "toasters";
-import { mapState, mapGetters, mapActions } from "vuex";
+import { mapState, mapGetters } from "vuex";
 
 export default {
 	data() {
@@ -59,57 +56,58 @@ export default {
 			siteSettings: {
 				logo: "",
 				sitename: "Musare",
-				github: ""
-			},
-			localNightmode: null
+				github: "",
+				footerLinks: {}
+			}
 		};
 	},
 	computed: {
+		filteredFooterLinks() {
+			return Object.fromEntries(
+				Object.entries(this.siteSettings.footerLinks).filter(
+					([title, url]) =>
+						!(
+							["about", "team", "news"].includes(
+								title.toLowerCase()
+							) && typeof url === "boolean"
+						)
+				)
+			);
+		},
 		...mapState({
-			loggedIn: state => state.user.auth.loggedIn,
-			nightmode: state => state.user.preferences.nightmode
+			loggedIn: state => state.user.auth.loggedIn
 		}),
 		...mapGetters({
 			socket: "websockets/getSocket"
 		})
 	},
-	watch: {
-		localNightmode(newValue, oldValue) {
-			if (oldValue === null) return;
-
-			localStorage.setItem("nightmode", this.localNightmode);
-
-			if (this.loggedIn) {
-				this.socket.dispatch(
-					"users.updatePreferences",
-					{ nightmode: this.localNightmode },
-					res => {
-						if (res.status !== "success") new Toast(res.message);
-					}
-				);
-			}
-
-			this.changeNightmode(this.localNightmode);
-		},
-		nightmode(nightmode) {
-			if (this.localNightmode !== nightmode)
-				this.localNightmode = nightmode;
-		}
-	},
 	async mounted() {
-		this.localNightmode = JSON.parse(localStorage.getItem("nightmode"));
-		if (this.localNightmode === null) this.localNightmode = false;
-
 		this.frontendDomain = await lofig.get("frontendDomain");
-		this.siteSettings = await lofig.get("siteSettings");
+		lofig.get("siteSettings").then(siteSettings => {
+			this.siteSettings = {
+				...siteSettings,
+				footerLinks: {
+					about: true,
+					team: true,
+					news: true,
+					...siteSettings.footerLinks
+				}
+			};
+		});
 	},
 	methods: {
-		...mapActions("user/preferences", ["changeNightmode"])
+		getLink(title) {
+			return this.siteSettings.footerLinks[
+				Object.keys(this.siteSettings.footerLinks).find(
+					key => key.toLowerCase() === title
+				)
+			];
+		}
 	}
 };
 </script>
 
-<style lang="scss" scoped>
+<style lang="less" scoped>
 .night-mode {
 	footer.footer,
 	footer.footer .container,
@@ -123,12 +121,10 @@ export default {
 	bottom: 0;
 	flex-shrink: 0;
 	padding: 20px;
-	border-radius: 33% 33% 0% 0% / 7% 7% 0% 0%;
-	box-shadow: 0 4px 8px 0 rgba(3, 169, 244, 0.4),
-		0 6px 20px 0 rgba(3, 169, 244, 0.2);
+	box-shadow: @box-shadow;
 	background-color: var(--white);
 	width: 100%;
-	height: 200px;
+	height: 160px;
 	font-size: 16px;
 
 	.container {
@@ -148,10 +144,6 @@ export default {
 		a:not(.button) {
 			border: 0;
 		}
-	}
-
-	@media (max-width: 650px) {
-		border-radius: 0;
 	}
 
 	#footer-logo {
@@ -205,15 +197,11 @@ export default {
 	#footer-copyright {
 		order: 4;
 	}
-
-	#footer-nightmode-toggle {
-		order: 2;
-	}
 }
 
 @media only screen and (min-width: 990px) {
 	.footer {
-		height: 140px;
+		height: 100px;
 
 		#footer-copyright {
 			order: 3;
@@ -229,10 +217,6 @@ export default {
 			top: 0;
 			position: absolute;
 			line-height: 50px;
-		}
-
-		#footer-nightmode-toggle {
-			order: 4;
 		}
 	}
 }
