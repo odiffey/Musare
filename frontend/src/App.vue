@@ -210,18 +210,14 @@ export default {
 		this.$router.isReady().then(() => {
 			if (this.$route.query.err) {
 				let { err } = this.$route.query;
-				err = err
-					.replace(new RegExp("<", "g"), "&lt;")
-					.replace(new RegExp(">", "g"), "&gt;");
+				err = err.replace(/</g, "&lt;").replace(/>/g, "&gt;");
 				this.$router.push({ query: {} });
 				new Toast({ content: err, timeout: 20000 });
 			}
 
 			if (this.$route.query.msg) {
 				let { msg } = this.$route.query;
-				msg = msg
-					.replace(new RegExp("<", "g"), "&lt;")
-					.replace(new RegExp(">", "g"), "&gt;");
+				msg = msg.replace(/</g, "&lt;").replace(/>/g, "&gt;");
 				this.$router.push({ query: {} });
 				new Toast({ content: msg, timeout: 20000 });
 			}
@@ -287,7 +283,7 @@ export default {
 };
 </script>
 
-<style lang="scss">
+<style lang="less">
 @import "normalize.css/normalize.css";
 @import "tippy.js/dist/tippy.css";
 @import "tippy.js/animations/scale.css";
@@ -840,15 +836,14 @@ img {
 	top: 50px;
 	right: 50px;
 	font-size: 2em;
-	border-radius: 5px;
+	border-radius: @border-radius;
 	z-index: 10000000;
 }
 
 .night-mode {
 	.tippy-box {
 		border: 1px solid var(--light-grey-3);
-		box-shadow: 0 14px 28px rgba(0, 0, 0, 0.25),
-			0 10px 10px rgba(0, 0, 0, 0.22);
+		box-shadow: @box-shadow-dropdown;
 		background-color: var(--white);
 
 		.tippy-content {
@@ -980,7 +975,7 @@ img {
 	font-size: 15px;
 	padding: 5px 10px;
 	border: 1px solid var(--light-grey-3);
-	box-shadow: 0 14px 28px rgba(0, 0, 0, 0.25), 0 10px 10px rgba(0, 0, 0, 0.22);
+	box-shadow: @box-shadow-dropdown;
 	background-color: var(--white);
 
 	.button {
@@ -1085,7 +1080,7 @@ img {
 
 .tippy-box[data-theme~="stationSettings"] {
 	border: 1px solid var(--light-grey-3);
-	box-shadow: 0 14px 28px rgba(0, 0, 0, 0.25), 0 10px 10px rgba(0, 0, 0, 0.22);
+	box-shadow: @box-shadow-dropdown;
 	background-color: var(--white);
 
 	button:not(:last-of-type) {
@@ -1097,7 +1092,7 @@ img {
 	font-size: 15px;
 	padding: 0;
 	border: 1px solid var(--light-grey-3);
-	box-shadow: 0 14px 28px rgba(0, 0, 0, 0.25), 0 10px 10px rgba(0, 0, 0, 0.22);
+	box-shadow: @box-shadow-dropdown;
 	background-color: var(--white);
 	color: var(--dark-grey);
 	width: 350px;
@@ -1119,7 +1114,7 @@ img {
 			font-size: 15.5px;
 			min-height: 36px;
 			background: var(--light-grey);
-			border-radius: 5px;
+			border-radius: @border-radius;
 			cursor: pointer;
 
 			.checkbox-control {
@@ -1219,7 +1214,7 @@ img {
 	font-size: 15px;
 	padding: 0;
 	border: 1px solid var(--light-grey-3);
-	box-shadow: 0 14px 28px rgba(0, 0, 0, 0.25), 0 10px 10px rgba(0, 0, 0, 0.22);
+	box-shadow: @box-shadow-dropdown;
 	background-color: var(--white);
 	color: var(--dark-grey);
 	width: 100% !important;
@@ -1245,6 +1240,16 @@ img {
 .select {
 	position: relative;
 
+	&.is-expanded {
+		width: 100%;
+	}
+
+	&.disabled,
+	.disabled {
+		filter: grayscale(1);
+		cursor: not-allowed;
+	}
+
 	&:after {
 		content: " ";
 		border: 1.5px solid var(--primary-color);
@@ -1262,11 +1267,12 @@ img {
 
 	select {
 		height: 36px;
+		width: 100%;
 		background-color: var(--white);
 		border: 1px solid var(--light-grey-2);
 		color: var(--dark-grey-2);
 		appearance: none;
-		border-radius: 3px;
+		border-radius: @border-radius;
 		font-size: 14px;
 		line-height: 24px;
 		padding-left: 8px;
@@ -1286,7 +1292,7 @@ img {
 		background-color: var(--white);
 		border: 1px solid var(--light-grey-2);
 		appearance: none;
-		border-radius: 3px;
+		border-radius: @border-radius;
 		cursor: pointer;
 		position: relative;
 
@@ -1352,7 +1358,7 @@ button.delete:focus {
 	width: 100%;
 	border-collapse: collapse;
 	border-spacing: 0;
-	border-radius: 5px;
+	border-radius: @border-radius;
 
 	thead th {
 		padding: 5px 10px;
@@ -1376,7 +1382,7 @@ button.delete:focus {
 	border: 1px solid var(--light-grey-2);
 	background-color: var(--white);
 	color: var(--dark-grey-2);
-	border-radius: 3px;
+	border-radius: @border-radius;
 	line-height: 24px;
 	align-items: center;
 	display: inline-flex;
@@ -1447,7 +1453,7 @@ button.delete:focus {
 	padding-right: 8px;
 	line-height: 24px;
 	font-size: 14px;
-	border-radius: 3px;
+	border-radius: @border-radius;
 	box-shadow: inset 0 1px 2px rgba(10, 10, 10, 0.1);
 	border: 1px solid var(--light-grey-2);
 }
@@ -1502,6 +1508,34 @@ button.delete:focus {
 
 	&.is-grouped {
 		display: flex;
+
+		& > .control {
+			&.select.is-expanded > select {
+				width: 100%;
+			}
+			& > input,
+			& > select,
+			& > .button,
+			&.label {
+				border-radius: 0;
+			}
+			&:first-child {
+				& > input,
+				& > select,
+				& > .button,
+				&.label {
+					border-radius: @border-radius 0 0 @border-radius;
+				}
+			}
+			&:last-child {
+				& > input,
+				& > select,
+				& > .button,
+				&.label {
+					border-radius: 0 @border-radius @border-radius 0;
+				}
+			}
+		}
 	}
 
 	&.is-expanded {
@@ -1516,12 +1550,17 @@ button.delete:focus {
 			margin-right: -1px;
 
 			&:first-child {
-				border-radius: 3px 0 0 3px;
+				border-radius: @border-radius 0 0 @border-radius;
 			}
 
 			&:last-child {
-				border-radius: 0 3px 3px 0;
+				border-radius: 0 @border-radius @border-radius 0;
 				padding-left: 10px;
+			}
+
+			&.dropdown-toggle {
+				padding-left: 5px;
+				padding-right: 5px;
 			}
 		}
 
@@ -1529,7 +1568,7 @@ button.delete:focus {
 			margin-right: -1px;
 
 			&:first-child {
-				border-radius: 3px 0 0 3px;
+				border-radius: @border-radius 0 0 @border-radius;
 			}
 		}
 	}
@@ -1544,14 +1583,14 @@ button.delete:focus {
 	select {
 		width: 100%;
 		height: 36px;
-		border-radius: 3px 0 0 3px;
+		border-radius: @border-radius 0 0 @border-radius;
 		border-right: 0;
 		border-color: var(--light-grey-3);
 	}
 
 	.button {
 		height: 36px;
-		border-radius: 0 3px 3px 0;
+		border-radius: 0 @border-radius @border-radius 0;
 	}
 }
 
@@ -1616,14 +1655,14 @@ h4.section-title {
 	justify-content: space-between;
 	padding: 7.5px;
 	border: 1px solid var(--light-grey-3);
-	border-radius: 3px;
+	border-radius: @border-radius;
 	overflow: hidden;
 
 	.item-thumbnail {
 		width: 65px;
 		height: 65px;
 		margin: -7.5px;
-		border-radius: 3px 0 0 3px;
+		border-radius: @border-radius 0 0 @border-radius;
 	}
 
 	.item-title {
@@ -1803,7 +1842,7 @@ h4.section-title {
 }
 
 .content-box {
-	border-radius: 3px;
+	border-radius: @border-radius;
 	background-color: var(--white);
 	border: 1px solid var(--dark-grey);
 	max-width: 580px;
@@ -1875,10 +1914,10 @@ h4.section-title {
 
 .news-item {
 	font-family: Nunito, Arial, sans-serif;
-	border-radius: 5px;
+	border-radius: @border-radius;
 	padding: 20px;
 	border: unset !important;
-	box-shadow: 0 2px 3px rgba(10, 10, 10, 0.1), 0 0 0 1px rgba(10, 10, 10, 0.1);
+	box-shadow: @box-shadow;
 
 	* {
 		font-family: Nunito, Arial, sans-serif;
@@ -1932,6 +1971,10 @@ h4.section-title {
 
 	code {
 		font-style: italic;
+	}
+
+	hr {
+		margin: 10px 0;
 	}
 }
 .checkbox-control {
@@ -2050,12 +2093,12 @@ html {
 	background-color: var(--light-grey);
 	color: var(--primary-color);
 	padding: 5px 10px;
-	border-radius: 5px;
+	border-radius: @border-radius;
 	font-size: 14px;
 	font-weight: 600;
 	white-space: nowrap;
 	margin-top: 5px;
-	box-shadow: 0 2px 3px rgba(10, 10, 10, 0.1), 0 0 0 1px rgba(10, 10, 10, 0.1);
+	box-shadow: @box-shadow;
 	transition: all 0.2s ease-in-out;
 
 	&:hover,

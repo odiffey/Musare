@@ -117,10 +117,7 @@
 									>
 										<template #tippyActions>
 											<i
-												class="
-													material-icons
-													add-to-queue-icon
-												"
+												class="material-icons add-to-queue-icon"
 												v-if="
 													station.partyMode &&
 													!station.locked
@@ -148,10 +145,7 @@
 												"
 											>
 												<i
-													class="
-														material-icons
-														delete-icon
-													"
+													class="material-icons delete-icon"
 													content="Remove Song from Playlist"
 													v-tippy
 													>delete_forever</i
@@ -609,7 +603,7 @@ export default {
 };
 </script>
 
-<style lang="scss" scoped>
+<style lang="less" scoped>
 .night-mode {
 	.label,
 	p,
@@ -636,7 +630,7 @@ export default {
 			}
 		}
 		.right-section .section {
-			border-radius: 5px;
+			border-radius: @border-radius;
 		}
 	}
 }
@@ -674,7 +668,7 @@ export default {
 		max-height: unset !important;
 	}
 
-	/deep/ .section {
+	:deep(.section) {
 		max-width: 100% !important;
 	}
 }
@@ -718,7 +712,7 @@ export default {
 				overflow-x: auto;
 
 				.button {
-					border-radius: 5px 5px 0 0;
+					border-radius: @border-radius @border-radius 0 0;
 					border: 0;
 					text-transform: uppercase;
 					font-size: 14px;
@@ -741,14 +735,14 @@ export default {
 			.tab {
 				border: 1px solid var(--light-grey-3);
 				padding: 15px;
-				border-radius: 0 0 5px 5px;
+				border-radius: 0 0 @border-radius @border-radius;
 				margin: 0;
 			}
 		}
 
 		#playlist-info-section {
 			border: 1px solid var(--light-grey-3);
-			border-radius: 3px;
+			border-radius: @border-radius;
 			padding: 15px !important;
 
 			h3 {

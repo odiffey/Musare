@@ -170,14 +170,6 @@
 			>
 				View Station Playlist
 			</a>
-			<button
-				class="button is-primary tab-actionable-button"
-				v-if="loggedIn && station.type === 'official'"
-				@click="openModal('requestSong')"
-			>
-				<i class="material-icons icon-with-button">queue</i>
-				<span class="optional-desktop-only-text"> Request Song </span>
-			</button>
 			<div v-if="isOwnerOrAdmin()" class="right">
 				<quick-confirm @confirm="clearAndRefillStationQueue()">
 					<a class="button is-danger">
@@ -599,7 +591,7 @@ export default {
 };
 </script>
 
-<style lang="scss">
+<style lang="less">
 .manage-station-modal.modal .modal-card {
 	.tab > button {
 		width: 100%;
@@ -615,7 +607,7 @@ export default {
 }
 </style>
 
-<style lang="scss" scoped>
+<style lang="less" scoped>
 .night-mode {
 	.manage-station-modal.modal .modal-card-body {
 		.left-section {
@@ -633,6 +625,7 @@ export default {
 		}
 		.right-section .section,
 		#queue {
+			border-radius: @border-radius;
 			background-color: transparent !important;
 		}
 	}
@@ -647,7 +640,7 @@ export default {
 				overflow-x: auto;
 
 				.button {
-					border-radius: 5px 5px 0 0;
+					border-radius: @border-radius @border-radius 0 0;
 					border: 0;
 					text-transform: uppercase;
 					font-size: 14px;
@@ -670,7 +663,7 @@ export default {
 			.tab {
 				border: 1px solid var(--light-grey-3);
 				padding: 15px;
-				border-radius: 0 0 5px 5px;
+				border-radius: 0 0 @border-radius @border-radius;
 			}
 		}
 	}
