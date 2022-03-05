@@ -3,7 +3,9 @@
 ## [v3.4.0] - 2022-03-05
 
 ### **Breaking Changes**
-This release includes a MongoDB update with breaking changes. Before upgrading please backup your database and reset it, and after upgrading restore it. Documentation on how to do this can be found in [.wiki/Utility_Script.md](.wiki/Utility_Script.md).
+This release includes a MongoDB upgrade with breaking changes. Before upgrading please backup your database and reset it, and after upgrading restore it.
+Documentation on how to do each of these steps can be found in [.wiki/Utility_Script.md](.wiki/Utility_Script.md).
+Please note that `musare.sh update` does not automatically do this for you.
 
 Please run the Update All Songs job after upgrading to ensure playlist and station song data accuracy.
 

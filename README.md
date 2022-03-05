@@ -50,6 +50,7 @@ A demonstration instance of Musare can be found at [demo.musare.com](https://dem
     - Import YouTube playlists from admin area
     - Any song added to playlists or stations will be automatically requested
     - Bulk admin management of songs
+    - Create songs from scratch
 - **Users**
     - Activity logs
     - Profile page showing public playlists and activity logs
@@ -72,6 +73,7 @@ A demonstration instance of Musare can be found at [demo.musare.com](https://dem
         - Reorder, resize, sort by and toggle visibilty of columns
         - Advanced queries
     - Bulk management
+    - View backend statistics
 ---
 
 ## Contact
