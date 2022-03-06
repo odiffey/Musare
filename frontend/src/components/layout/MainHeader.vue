@@ -168,7 +168,8 @@ export default {
 			this.windowWidth = window.innerWidth;
 		},
 		...mapActions("modalVisibility", ["openModal"]),
-		...mapActions("user/auth", ["logout"])
+		...mapActions("user/auth", ["logout"]),
+		...mapActions("user/preferences", ["changeNightmode"])
 	}
 };
 </script>
