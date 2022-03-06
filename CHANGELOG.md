@@ -1,11 +1,9 @@
 # Changelog
 
-## [v3.4.0] - 2022-03-05
+## [v3.4.0-rc1] - 2022-03-06
 
 ### **Breaking Changes**
-This release includes a MongoDB upgrade with breaking changes. Before upgrading please backup your database and reset it, and after upgrading restore it.
-Documentation on how to do each of these steps can be found in [.wiki/Utility_Script.md](.wiki/Utility_Script.md).
-Please note that `musare.sh update` does not automatically do this for you.
+This release makes the MongoDB version configurable in the .env file. Prior to this release, the MongoDB version was 4.0. We recommend upgrading to 5.0 or 4.4. Upgrade instructions can be found in [.wiki/Upgrading](.wiki/Upgrading.md#Upgrade/downgradeMongoDB).
 
 Please run the Update All Songs job after upgrading to ensure playlist and station song data accuracy.
 
@@ -30,6 +28,8 @@ Please run the Update All Songs job after upgrading to ensure playlist and stati
 - feat: Ability to toggle report resolution status
 - feat: Ability to show news items to new users on first visit
 - feat: Added warning label to thumbnails in Edit Song if not square
+- chore: Added Upgrading wiki page
+- feat: Configurable MongoDB container image version
 
 ### Changed
 - refactor: Replaced night mode toggle slider in Main Header with day/night icons
@@ -51,6 +51,7 @@ Please run the Update All Songs job after upgrading to ensure playlist and stati
 - refactor: Set title and thumbnail on YouTube video selection in Create Song
 - refactor: Show YouTube tab by default in Create Song
 - refactor: Move admin tab routing to vue router
+- refactor: Pull images in musare.sh build command
 
 ### Fixed
 - fix: Relative homepage header height causing overlay of content on non-standard resolutions
