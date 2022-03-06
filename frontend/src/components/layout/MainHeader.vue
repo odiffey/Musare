@@ -138,6 +138,9 @@ export default {
 		}
 	},
 	async mounted() {
+		this.localNightmode = JSON.parse(localStorage.getItem("nightmode"));
+		if (this.localNightmode === null) this.localNightmode = false;
+
 		this.frontendDomain = await lofig.get("frontendDomain");
 		this.siteSettings = await lofig.get("siteSettings");
 
