@@ -2,7 +2,8 @@
 
 const state = {
 	station: {},
-	partyPlaylists: [],
+	autoRequest: [],
+	autoRequestLock: false,
 	editing: {},
 	userCount: 0,
 	users: {
@@ -16,8 +17,8 @@ const state = {
 	stationPaused: true,
 	localPaused: false,
 	noSong: true,
-	includedPlaylists: [],
-	excludedPlaylists: []
+	autofill: [],
+	blacklist: []
 };
 
 const getters = {};
@@ -31,6 +32,9 @@ const actions = {
 	},
 	editStation: ({ commit }, station) => {
 		commit("editStation", station);
+	},
+	updateStation: ({ commit }, station) => {
+		commit("updateStation", station);
 	},
 	updateUserCount: ({ commit }, userCount) => {
 		commit("updateUserCount", userCount);
@@ -62,17 +66,20 @@ const actions = {
 	updateNoSong: ({ commit }, noSong) => {
 		commit("updateNoSong", noSong);
 	},
-	updatePartyPlaylists: ({ commit }, playlists) => {
-		commit("updatePartyPlaylists", playlists);
+	updateAutoRequest: ({ commit }, playlists) => {
+		commit("updateAutoRequest", playlists);
+	},
+	updateAutoRequestLock: ({ commit }, lock) => {
+		commit("updateAutoRequestLock", lock);
 	},
 	updateIfStationIsFavorited: ({ commit }, { isFavorited }) => {
 		commit("updateIfStationIsFavorited", isFavorited);
 	},
-	setIncludedPlaylists: ({ commit }, includedPlaylists) => {
-		commit("setIncludedPlaylists", includedPlaylists);
+	setAutofillPlaylists: ({ commit }, autofillPlaylists) => {
+		commit("setAutofillPlaylists", autofillPlaylists);
 	},
-	setExcludedPlaylists: ({ commit }, excludedPlaylists) => {
-		commit("setExcludedPlaylists", excludedPlaylists);
+	setBlacklist: ({ commit }, blacklist) => {
+		commit("setBlacklist", blacklist);
 	},
 	updateCurrentSongRatings: ({ commit }, songRatings) => {
 		commit("updateCurrentSongRatings", songRatings);
@@ -85,6 +92,12 @@ const actions = {
 		{ skipVotes, skipVotesCurrent }
 	) => {
 		commit("updateCurrentSongSkipVotes", { skipVotes, skipVotesCurrent });
+	},
+	addPlaylistToAutoRequest: ({ commit }, playlist) => {
+		commit("addPlaylistToAutoRequest", playlist);
+	},
+	removePlaylistFromAutoRequest: ({ commit }, playlistId) => {
+		commit("removePlaylistFromAutoRequest", playlistId);
 	}
 };
 
@@ -94,7 +107,8 @@ const mutations = {
 	},
 	leaveStation(state) {
 		state.station = {};
-		state.partyPlaylists = [];
+		state.autoRequest = [];
+		state.autoRequestLock = false;
 		state.editing = {};
 		state.userCount = 0;
 		state.users = {
@@ -108,11 +122,14 @@ const mutations = {
 		state.stationPaused = true;
 		state.localPaused = false;
 		state.noSong = true;
-		state.includedPlaylists = [];
-		state.excludedPlaylists = [];
+		state.autofill = [];
+		state.blacklist = [];
 	},
 	editStation(state, station) {
 		state.editing = { ...station };
+	},
+	updateStation(state, station) {
+		state.station = { ...state.station, ...station };
 	},
 	updateUserCount(state, userCount) {
 		state.userCount = userCount;
@@ -158,17 +175,20 @@ const mutations = {
 	updateNoSong(state, noSong) {
 		state.noSong = noSong;
 	},
-	updatePartyPlaylists(state, playlists) {
-		state.partyPlaylists = playlists;
+	updateAutoRequest(state, playlists) {
+		state.autoRequest = playlists;
+	},
+	updateAutoRequestLock(state, lock) {
+		state.autoRequestLock = lock;
 	},
 	updateIfStationIsFavorited(state, isFavorited) {
 		state.station.isFavorited = isFavorited;
 	},
-	setIncludedPlaylists(state, includedPlaylists) {
-		state.includedPlaylists = JSON.parse(JSON.stringify(includedPlaylists));
+	setAutofillPlaylists(state, autofillPlaylists) {
+		state.autofill = JSON.parse(JSON.stringify(autofillPlaylists));
 	},
-	setExcludedPlaylists(state, excludedPlaylists) {
-		state.excludedPlaylists = JSON.parse(JSON.stringify(excludedPlaylists));
+	setBlacklist(state, blacklist) {
+		state.blacklist = JSON.parse(JSON.stringify(blacklist));
 	},
 	updateCurrentSongRatings(state, songRatings) {
 		state.currentSong.likes = songRatings.likes;
@@ -182,6 +202,16 @@ const mutations = {
 		state.currentSong.skipVotes = skipVotes;
 		if (skipVotesCurrent !== null)
 			state.currentSong.skipVotesCurrent = skipVotesCurrent;
+	},
+	addPlaylistToAutoRequest(state, playlist) {
+		state.autoRequest.push(playlist);
+	},
+	removePlaylistFromAutoRequest(state, playlistId) {
+		state.autoRequest.forEach((playlist, index) => {
+			if (playlist._id === playlistId) {
+				state.autoRequest.splice(index, 1);
+			}
+		});
 	}
 };
 

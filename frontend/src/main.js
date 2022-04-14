@@ -61,6 +61,17 @@ app.component("PageMetadata", {
 	}
 });
 
+const globalComponents = require.context(
+	"@/components/global/",
+	true,
+	/\.vue$/i
+);
+globalComponents.keys().forEach(componentFilePath => {
+	const componentName = componentFilePath.split("/").pop().split(".")[0];
+	const component = globalComponents(componentFilePath);
+	app.component(componentName, component.default || component);
+});
+
 app.directive("scroll", {
 	mounted(el, binding) {
 		const f = evt => {
@@ -151,6 +162,7 @@ const router = createRouter({
 		},
 		{
 			path: "/admin",
+			name: "admin",
 			component: () => import("@/pages/Admin/index.vue"),
 			children: [
 				{
@@ -209,9 +221,8 @@ router.beforeEach((to, from, next) => {
 		window.stationInterval = 0;
 	}
 
-	if (from.name === "home" && to.name === "station") {
-		if (store.state.modalVisibility.modals.manageStation)
-			store.dispatch("modalVisibility/closeModal", "manageStation");
+	if (to.name === "station") {
+		store.dispatch("modalVisibility/closeModal", "manageStation");
 	}
 
 	if (ws.socket && to.fullPath !== from.fullPath) {

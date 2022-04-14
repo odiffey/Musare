@@ -3,7 +3,7 @@
 		<div class="container">
 			<div class="footer-content">
 				<div id="footer-copyright">
-					<p>© Copyright {{ siteSettings.sitename }} 2015 - 2022</p>
+					<p>© Copyright Musare 2015 - 2022</p>
 				</div>
 				<router-link id="footer-logo" to="/">
 					<img
@@ -48,15 +48,12 @@
 </template>
 
 <script>
-import { mapState, mapGetters } from "vuex";
-
 export default {
 	data() {
 		return {
 			siteSettings: {
-				logo: "",
+				logo_blue: "/assets/blue_wordmark.png",
 				sitename: "Musare",
-				github: "",
 				footerLinks: {}
 			}
 		};
@@ -73,16 +70,9 @@ export default {
 						)
 				)
 			);
-		},
-		...mapState({
-			loggedIn: state => state.user.auth.loggedIn
-		}),
-		...mapGetters({
-			socket: "websockets/getSocket"
-		})
+		}
 	},
 	async mounted() {
-		this.frontendDomain = await lofig.get("frontendDomain");
 		lofig.get("siteSettings").then(siteSettings => {
 			this.siteSettings = {
 				...siteSettings,
@@ -120,6 +110,7 @@ export default {
 	position: relative;
 	bottom: 0;
 	flex-shrink: 0;
+	height: auto;
 	padding: 20px;
 	box-shadow: @box-shadow;
 	background-color: var(--white);
@@ -160,7 +151,6 @@ export default {
 		white-space: nowrap;
 
 		img {
-			max-height: 38px;
 			max-width: 100%;
 			color: var(--primary-color);
 			user-select: none;
@@ -169,7 +159,7 @@ export default {
 	}
 
 	#footer-links {
-		order: 3;
+		order: 2;
 
 		:not(:last-child) {
 			border-right: solid 1px var(--primary-color);
@@ -195,7 +185,7 @@ export default {
 	}
 
 	#footer-copyright {
-		order: 4;
+		order: 3;
 	}
 }
 
@@ -204,7 +194,6 @@ export default {
 		height: 100px;
 
 		#footer-copyright {
-			order: 3;
 			left: 0;
 			top: 0;
 			position: absolute;
@@ -212,7 +201,6 @@ export default {
 		}
 
 		#footer-links {
-			order: 2;
 			right: 0;
 			top: 0;
 			position: absolute;
