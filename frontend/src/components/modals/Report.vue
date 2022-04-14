@@ -171,7 +171,14 @@
 											class="material-icons"
 											content="View Report"
 											v-tippy
-											@click="view(report._id)"
+											@click="
+												openModal({
+													modal: 'viewReport',
+													data: {
+														reportId: report._id
+													}
+												})
+											"
 										>
 											open_in_full
 										</i>
@@ -201,22 +208,23 @@
 				</div>
 			</template>
 		</modal>
-		<view-report v-if="modals.viewReport" />
 	</div>
 </template>
 
 <script>
-import { mapState, mapGetters, mapActions } from "vuex";
+import { mapGetters, mapActions } from "vuex";
 import Toast from "toasters";
 import ws from "@/ws";
+import { mapModalState } from "@/vuex_helpers";
 
-import ViewReport from "@/components/modals/ViewReport.vue";
 import SongItem from "@/components/SongItem.vue";
 import ReportInfoItem from "@/components/ReportInfoItem.vue";
-import Modal from "../Modal.vue";
 
 export default {
-	components: { Modal, ViewReport, SongItem, ReportInfoItem },
+	components: { SongItem, ReportInfoItem },
+	props: {
+		modalUuid: { type: String, default: "" }
+	},
 	data() {
 		return {
 			icons: {
@@ -349,12 +357,8 @@ export default {
 		};
 	},
 	computed: {
-		...mapState({
-			song: state => state.modals.report.song,
-			previousSong: state => state.station.previousSong
-		}),
-		...mapState("modalVisibility", {
-			modals: state => state.modals
+		...mapModalState("modals/report/MODAL_UUID", {
+			song: state => state.song
 		}),
 		...mapGetters({
 			socket: "websockets/getSocket"
@@ -370,8 +374,12 @@ export default {
 					report => report._id !== res.data.reportId
 				);
 			},
-			{ modal: "report" }
+			{ modalUuid: this.modalUuid }
 		);
+	},
+	beforeUnmount() {
+		// Delete the VueX module that was created for this modal, after all other cleanup tasks are performed
+		this.$store.unregisterModule(["modals", "report", this.modalUuid]);
 	},
 	methods: {
 		init() {
@@ -390,10 +398,6 @@ export default {
 					}
 				}
 			);
-		},
-		view(reportId) {
-			this.viewReport(reportId);
-			this.openModal("viewReport");
 		},
 		create() {
 			const issues = [];
@@ -430,9 +434,7 @@ export default {
 				}
 			);
 		},
-		...mapActions("modalVisibility", ["openModal", "closeModal"]),
-		...mapActions("modals/viewReport", ["viewReport"]),
-		...mapActions("modals/report", ["reportSong"])
+		...mapActions("modalVisibility", ["openModal", "closeModal"])
 	}
 };
 </script>
