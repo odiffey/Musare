@@ -40,6 +40,15 @@ if [[ ! -x "$(command -v ${docker})" || ! -x "$(command -v ${dockerCompose})" ]]
     exit 1
 fi
 
+composeFiles="-f docker-compose.yml"
+if [[ ${CONTAINER_MODE} == "dev" ]]; then
+    composeFiles="${composeFiles} -f docker-compose.dev.yml"
+fi
+if [[ -f docker-compose.override.yml ]]; then
+    composeFiles="${composeFiles} -f docker-compose.override.yml"
+fi
+dockerCompose="${dockerCompose} ${composeFiles}"
+
 handleServices()
 {
     validServices=(backend frontend mongo redis)
@@ -78,23 +87,20 @@ runDockerCommand()
             else
                 servicesString=${servicesString:2}
             fi
-            if [[ ${CONTAINER_MODE} == "dev" ]]; then
-                composeFiles="-f docker-compose.yml -f docker-compose.dev.yml"
-            else
-                composeFiles="-f docker-compose.yml"
-            fi
+
             if [[ ${2} == "stop" || ${2} == "restart" ]]; then
                 # shellcheck disable=SC2086
-                ${dockerCompose} ${composeFiles} stop ${servicesString}
+                ${dockerCompose} stop ${servicesString}
             fi
             if [[ ${2} == "start" || ${2} == "restart" ]]; then
                 # shellcheck disable=SC2086
-                ${dockerCompose} ${composeFiles} up -d ${servicesString}
+                ${dockerCompose} up -d ${servicesString}
             fi
             if [[ ${2} == "pull" || ${2} == "build" || ${2} == "ps" || ${2} == "logs" ]]; then
                 # shellcheck disable=SC2086
-                ${dockerCompose} ${composeFiles} "${2}" ${servicesString}
+                ${dockerCompose} "${2}" ${servicesString}
             fi
+
             exitValue=$?
             if [[ ${exitValue} -gt 0 ]]; then
                 exit ${exitValue}
@@ -185,7 +191,7 @@ case $1 in
                 # shellcheck disable=SC2086
                 runDockerCommand "$(basename "$0")" stop ${servicesString:2}
                 # shellcheck disable=SC2086
-                ${dockerCompose} rm -v --force ${servicesString:2}
+                ${dockerCompose} rm -v --force ${servicesString}
                 if [[ "${servicesString:2}" == *redis* && -d $REDIS_DATA_LOCATION ]]; then
                     rm -rf "${REDIS_DATA_LOCATION}"
                 fi

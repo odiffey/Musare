@@ -744,16 +744,19 @@ export default {
 			this.orderOfFavoriteStations = res.data.order;
 		});
 
-		if (this.isAdmin()) {
-			// ctrl + alt + f
-			keyboardShortcuts.registerShortcut("home.toggleAdminFilter", {
-				keyCode: 70,
-				ctrl: true,
-				alt: true,
-				handler: () => {
+		// ctrl + alt + f
+		keyboardShortcuts.registerShortcut("home.toggleAdminFilter", {
+			keyCode: 70,
+			ctrl: true,
+			alt: true,
+			handler: () => {
+				if (this.isAdmin())
 					if (this.$route.query.adminFilter === undefined)
 						this.$router.push({
-							query: { ...this.$route.query, adminFilter: null }
+							query: {
+								...this.$route.query,
+								adminFilter: null
+							}
 						});
 					else
 						this.$router.push({
@@ -762,9 +765,8 @@ export default {
 								adminFilter: undefined
 							}
 						});
-				}
-			});
-		}
+			}
+		});
 	},
 	beforeUnmount() {
 		this.socket.dispatch("apis.leaveRoom", "home", () => {});
