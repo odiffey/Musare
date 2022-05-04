@@ -38,7 +38,7 @@
 			<!-- (Admin) Pause/Resume Button -->
 			<button
 				class="button is-danger"
-				v-if="isOwnerOrAdmin() && stationPaused"
+				v-if="sector !== 'station' && isOwnerOrAdmin() && stationPaused"
 				@click="resumeStation()"
 			>
 				<i class="material-icons icon-with-button">play_arrow</i>
@@ -47,7 +47,9 @@
 			<button
 				class="button is-danger"
 				@click="pauseStation()"
-				v-if="isOwnerOrAdmin() && !stationPaused"
+				v-if="
+					sector !== 'station' && isOwnerOrAdmin() && !stationPaused
+				"
 			>
 				<i class="material-icons icon-with-button">pause</i>
 				<span> Pause Station </span>
@@ -57,7 +59,7 @@
 			<button
 				class="button is-danger"
 				@click="skipStation()"
-				v-if="isOwnerOrAdmin()"
+				v-if="sector !== 'station' && isOwnerOrAdmin()"
 			>
 				<i class="material-icons icon-with-button">skip_next</i>
 				<span> Force Skip </span>
@@ -103,7 +105,8 @@ export default {
 		station: { type: Object, default: null },
 		stationPaused: { type: Boolean, default: null },
 		showManageStation: { type: Boolean, default: false },
-		showGoToStation: { type: Boolean, default: false }
+		showGoToStation: { type: Boolean, default: false },
+		sector: { type: String, default: "manageStation" }
 	},
 	data() {
 		return {};

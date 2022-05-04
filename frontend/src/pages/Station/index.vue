@@ -74,6 +74,7 @@
 								:station="station"
 								:station-paused="stationPaused"
 								:show-manage-station="true"
+								:sector="'station'"
 							/>
 						</div>
 						<div id="sidebar-container" class="quadrant">
