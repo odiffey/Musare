@@ -74,6 +74,7 @@
 								:station="station"
 								:station-paused="stationPaused"
 								:show-manage-station="true"
+								:sector="'station'"
 							/>
 						</div>
 						<div id="sidebar-container" class="quadrant">
@@ -576,6 +577,7 @@
 								:class="{ 'no-currently-playing': noSong }"
 							>
 								<song-item
+									:key="`songItem-currentSong-${currentSong._id}`"
 									:song="currentSong"
 									:duration="false"
 									:requested-by="true"
@@ -588,6 +590,7 @@
 								class="quadrant"
 							>
 								<song-item
+									:key="`songItem-nextSong-${nextSong._id}`"
 									:song="nextSong"
 									:duration="false"
 									:requested-by="true"

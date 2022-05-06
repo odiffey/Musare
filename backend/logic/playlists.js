@@ -819,7 +819,7 @@ class _PlaylistsModule extends CoreClass {
 					},
 
 					(playlistId, next) => {
-						StationsModule.runJob("GET_STATIONS_THAT_INCLUDE_OR_EXCLUDE_PLAYLIST", { playlistId }, this)
+						StationsModule.runJob("GET_STATIONS_THAT_AUTOFILL_OR_BLACKLIST_PLAYLIST", { playlistId }, this)
 							.then(response => {
 								async.eachLimit(
 									response.stationIds,
@@ -871,7 +871,7 @@ class _PlaylistsModule extends CoreClass {
 								.then(response => {
 									if (response.songs.length === 0) {
 										StationsModule.runJob(
-											"GET_STATIONS_THAT_INCLUDE_OR_EXCLUDE_PLAYLIST",
+											"GET_STATIONS_THAT_AUTOFILL_OR_BLACKLIST_PLAYLIST",
 											{ playlistId: playlist._id },
 											this
 										)
