@@ -577,6 +577,7 @@
 								:class="{ 'no-currently-playing': noSong }"
 							>
 								<song-item
+									:key="`songItem-currentSong-${currentSong._id}`"
 									:song="currentSong"
 									:duration="false"
 									:requested-by="true"
@@ -589,6 +590,7 @@
 								class="quadrant"
 							>
 								<song-item
+									:key="`songItem-nextSong-${nextSong._id}`"
 									:song="nextSong"
 									:duration="false"
 									:requested-by="true"
