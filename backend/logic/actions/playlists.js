@@ -2545,6 +2545,23 @@ export default {
 	 * @param {Function} cb - gets called with the result
 	 */
 	clearAndRefillAllArtistPlaylists: isAdminRequired(async function index(session, cb) {
+		this.keepLongJob();
+		this.publishProgress({
+			status: "started",
+			title: "Clear and refill all artist playlists",
+			message: "Clearing and refilling all artist playlists.",
+			id: this.toString()
+		});
+		await CacheModule.runJob("RPUSH", { key: `longJobs.${session.userId}`, value: this.toString() }, this);
+		await CacheModule.runJob(
+			"PUB",
+			{
+				channel: "longJob.added",
+				value: { jobId: this.toString(), userId: session.userId }
+			},
+			this
+		);
+
 		async.waterfall(
 			[
 				next => {
@@ -2562,6 +2579,10 @@ export default {
 						playlists,
 						1,
 						(playlist, next) => {
+							this.publishProgress({
+								status: "update",
+								message: `Clearing and refilling "${playlist._id}"`
+							});
 							PlaylistsModule.runJob(
 								"CLEAR_AND_REFILL_ARTIST_PLAYLIST",
 								{ playlistId: playlist._id },
@@ -2605,7 +2626,10 @@ export default {
 						"PLAYLIST_CLEAR_AND_REFILL_ALL_ARTIST_PLAYLISTS",
 						`Clearing and refilling all artist playlists failed for user "${session.userId}". "${err}"`
 					);
-
+					this.publishProgress({
+						status: "error",
+						message: err
+					});
 					return cb({ status: "error", message: err });
 				}
 
@@ -2614,7 +2638,10 @@ export default {
 					"PLAYLIST_CLEAR_AND_REFILL_ALL_ARTIST_PLAYLISTS",
 					`Successfully cleared and refilled all artist playlists for user "${session.userId}".`
 				);
-
+				this.publishProgress({
+					status: "success",
+					message: "Playlists have been successfully cleared and refilled."
+				});
 				return cb({
 					status: "success",
 					message: "Playlists have been successfully cleared and refilled"
@@ -2699,6 +2726,23 @@ export default {
 	 * @param {Function} cb - gets called with the result
 	 */
 	createMissingArtistPlaylists: isAdminRequired(async function index(session, cb) {
+		this.keepLongJob();
+		this.publishProgress({
+			status: "started",
+			title: "Create missing artist playlists",
+			message: "Creating missing artist playlists.",
+			id: this.toString()
+		});
+		await CacheModule.runJob("RPUSH", { key: `longJobs.${session.userId}`, value: this.toString() }, this);
+		await CacheModule.runJob(
+			"PUB",
+			{
+				channel: "longJob.added",
+				value: { jobId: this.toString(), userId: session.userId }
+			},
+			this
+		);
+
 		async.waterfall(
 			[
 				next => {
@@ -2720,7 +2764,10 @@ export default {
 						"PLAYLIST_CREATE_MISSING_ARTIST_PLAYLISTS",
 						`Creating missing artist playlists failed for user "${session.userId}". "${err}"`
 					);
-
+					this.publishProgress({
+						status: "error",
+						message: err
+					});
 					return cb({ status: "error", message: err });
 				}
 
@@ -2729,7 +2776,10 @@ export default {
 					"PLAYLIST_CREATE_MISSING_ARTIST_PLAYLISTS",
 					`Successfully created missing artist playlists for user "${session.userId}".`
 				);
-
+				this.publishProgress({
+					status: "success",
+					message: "Missing artist playlists have been successfully created."
+				});
 				return cb({
 					status: "success",
 					message: "Missing artist playlists have been successfully created"
