@@ -2,11 +2,12 @@ FROM node:16.15 AS musare_frontend
 
 ARG FRONTEND_MODE=prod
 ENV FRONTEND_MODE=${FRONTEND_MODE}
+ENV SUPPRESS_NO_CONFIG_WARNING=1
 
 RUN apt-get update
 RUN apt-get install nginx -y
 
-RUN npm install -g webpack@5.72.0 webpack-cli@4.9.2
+RUN npm install -g webpack@5.73.0 webpack-cli@4.9.2
 
 RUN mkdir -p /opt/app
 WORKDIR /opt/app
