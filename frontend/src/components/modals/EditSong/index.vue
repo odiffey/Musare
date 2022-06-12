@@ -231,7 +231,11 @@
 							@loadError="onThumbnailLoadError"
 						/>
 						<img
-							v-if="!isYoutubeThumbnail && !songDeleted"
+							v-if="
+								!isYoutubeThumbnail &&
+								songDataLoaded &&
+								!songDeleted
+							"
 							class="thumbnail-dummy"
 							:src="song.thumbnail"
 							ref="thumbnailElement"
@@ -866,8 +870,11 @@ export default {
 			this.loadSong(youtubeId);
 		}
 	},
+	beforeMount() {
+		console.log("EDITSONG BEFOREMOUNT");
+	},
 	async mounted() {
-		console.log("MOUNTED");
+		console.log("EDITSONG MOUNTED");
 		this.activityWatchVideoDataInterval = setInterval(() => {
 			this.sendActivityWatchVideoData();
 		}, 1000);
@@ -1061,7 +1068,7 @@ export default {
 		*/
 	},
 	beforeUnmount() {
-		console.log("UNMOUNT");
+		console.log("EDITSONG BEFOREUNMOUNT");
 		this.unloadSong(this.youtubeId, this.song._id);
 
 		this.playerReady = false;
@@ -1096,7 +1103,18 @@ export default {
 				"editSong",
 				this.modalUuid
 			]);
+		} else {
+			console.log("UNREGISTER EDITSONG");
+			this.$store.unregisterModule([
+				"modals",
+				"editSongs",
+				this.modalUuid,
+				"editSong"
+			]);
 		}
+	},
+	unmounted() {
+		console.log("EDITSONG UNMOUNTED");
 	},
 	methods: {
 		onThumbnailLoad() {
@@ -1118,7 +1136,7 @@ export default {
 			this.thumbnailLoadError = error !== 0;
 		},
 		init() {
-			if (this.newSong && !this.youtubeId) {
+			if (this.newSong && !this.youtubeId && !this.bulk) {
 				this.setSong({
 					youtubeId: "",
 					title: "",
@@ -1368,7 +1386,8 @@ export default {
 			this.youtubeVideoCurrentTime = "0.000";
 			this.youtubeVideoDuration = "0.000";
 			this.youtubeVideoNote = "";
-			this.socket.dispatch("apis.leaveRoom", `edit-song.${songId}`);
+			if (songId)
+				this.socket.dispatch("apis.leaveRoom", `edit-song.${songId}`);
 			if (this.$refs.saveButton) this.$refs.saveButton.status = "default";
 		},
 		loadSong(youtubeId) {
@@ -1387,17 +1406,18 @@ export default {
 
 						this.songDataLoaded = true;
 
-						this.socket.dispatch(
-							"apis.joinRoom",
-							`edit-song.${this.song._id}`
-						);
+						if (song._id)
+							this.socket.dispatch(
+								"apis.joinRoom",
+								`edit-song.${song._id}`
+							);
 
 						if (
 							this.video.player &&
 							this.video.player.cueVideoById
 						) {
 							this.video.player.cueVideoById(
-								this.youtubeId,
+								youtubeId,
 								song.skipDuration
 							);
 						}
@@ -1857,9 +1877,9 @@ export default {
 				this.song.tags.splice(this.song.tags.indexOf(value), 1);
 		},
 		drawCanvas() {
-			if (!this.songDataLoaded) return;
 			const canvasElement =
 				this.$refs[`durationCanvas-${this.modalUuid}`];
+			if (!this.songDataLoaded || !canvasElement) return;
 			const ctx = canvasElement.getContext("2d");
 
 			const videoDuration = Number(this.youtubeVideoDuration);
