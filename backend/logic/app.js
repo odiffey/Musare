@@ -7,7 +7,9 @@ import bodyParser from "body-parser";
 import express from "express";
 import oauth from "oauth";
 import http from "http";
+import { graphqlHTTP } from "express-graphql";
 import CoreClass from "../core";
+import { schema } from "./schemas/test";
 
 const { OAuth2 } = oauth;
 
@@ -61,6 +63,8 @@ class _AppModule extends CoreClass {
 
 			app.use(cors(corsOptions));
 			app.options("*", cors(corsOptions));
+
+			app.use("/graphql", graphqlHTTP({ schema }));
 
 			const oauth2 = new OAuth2(
 				config.get("apis.github.client"),

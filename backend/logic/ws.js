@@ -6,6 +6,10 @@ import config from "config";
 import async from "async";
 import { WebSocketServer } from "ws";
 import { EventEmitter } from "events";
+import { parse } from "url";
+
+import { useServer } from "graphql-ws/lib/use/ws";
+import { schema } from "./schemas/test";
 
 import CoreClass from "../core";
 
@@ -49,7 +53,9 @@ class _WSModule extends CoreClass {
 		// TODO: Check every 30s/, for all sockets, if they are still allowed to be in the rooms they are in, and on socket at all (permission changing/banning)
 		const server = await AppModule.runJob("SERVER");
 
-		this._io = new WebSocketServer({ server, path: "/ws" });
+		this._io = new WebSocketServer({ path: "/ws", noServer: true });
+		this._graphql = new WebSocketServer({ path: "/graphql", noServer: true });
+		useServer({ schema }, this._graphql);
 
 		this.rooms = {};
 
@@ -71,6 +77,21 @@ class _WSModule extends CoreClass {
 				socket.on("pong", function heartbeat() {
 					this.isAlive = true;
 				});
+			});
+
+			server.on("upgrade", (req, socket, head) => {
+				const { pathname } = parse(req.url);
+				if (pathname === "/ws") {
+					this._io.handleUpgrade(req, socket, head, ws => {
+						this._io.emit("connection", ws, req);
+					});
+				} else if (pathname === "/graphql") {
+					this._graphql.handleUpgrade(req, socket, head, ws => {
+						this._graphql.emit("connection", ws, req);
+					});
+				} else {
+					socket.destroy();
+				}
 			});
 
 			const keepAliveInterval = setInterval(() => {
