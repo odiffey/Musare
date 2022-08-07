@@ -1188,15 +1188,10 @@ onMounted(async () => {
 	});
 
 	socket.on("event:station.nextSong", res => {
-		const {
-			currentSong: _currentSong,
-			startedAt,
-			paused,
-			timePaused
-		} = res.data;
+		const { currentSong, startedAt, paused, timePaused } = res.data;
 
 		setCurrentSong({
-			_currentSong,
+			currentSong,
 			startedAt,
 			paused,
 			timePaused,
