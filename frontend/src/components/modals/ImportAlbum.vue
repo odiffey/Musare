@@ -1,3 +1,411 @@
+<script setup lang="ts">
+// TODO - Fix sortable
+import {
+	defineAsyncComponent,
+	ref,
+	computed,
+	onMounted,
+	onBeforeUnmount
+} from "vue";
+import Toast from "toasters";
+import { Sortable } from "sortablejs-vue3";
+import { storeToRefs } from "pinia";
+import { useWebsocketsStore } from "@/stores/websockets";
+import { useModalsStore } from "@/stores/modals";
+import { useImportAlbumStore } from "@/stores/importAlbum";
+import ws from "@/ws";
+
+const Modal = defineAsyncComponent(() => import("@/components/Modal.vue"));
+const SongItem = defineAsyncComponent(
+	() => import("@/components/SongItem.vue")
+);
+
+const props = defineProps({
+	modalUuid: { type: String, default: "" }
+});
+
+const { socket } = useWebsocketsStore();
+
+const importAlbumStore = useImportAlbumStore(props);
+const { discogsTab, discogsAlbum, prefillDiscogs, playlistSongs } =
+	storeToRefs(importAlbumStore);
+const {
+	toggleDiscogsAlbum,
+	setPlaylistSongs,
+	updatePlaylistSongs,
+	selectDiscogsAlbum,
+	resetPlaylistSongs,
+	updatePlaylistSong
+} = importAlbumStore;
+
+const { openModal } = useModalsStore();
+
+const isImportingPlaylist = ref(false);
+const trackSongs = ref([]);
+const songsToEdit = ref([]);
+const search = ref({
+	playlist: {
+		query: ""
+	}
+});
+const discogsQuery = ref("");
+const discogs = ref({
+	apiResults: [],
+	page: 1,
+	pages: 1,
+	disableLoadMore: false
+});
+const discogsTabs = ref([]);
+const sortableUpdateNumber = ref(0);
+
+// TODO might not not be needed anymore, might be able to directly edit prefillDiscogs
+const localPrefillDiscogs = computed({
+	get: () => importAlbumStore.prefillDiscogs,
+	set: value => {
+		importAlbumStore.updatePrefillDiscogs(value);
+	}
+});
+
+const showDiscogsTab = tab => {
+	if (discogsTabs.value[`discogs-${tab}-tab`])
+		discogsTabs.value[`discogs-${tab}-tab`].scrollIntoView({
+			block: "nearest"
+		});
+	return importAlbumStore.showDiscogsTab(tab);
+};
+
+const init = () => {
+	socket.dispatch("apis.joinRoom", "import-album");
+};
+
+const startEditingSongs = () => {
+	songsToEdit.value = [];
+	trackSongs.value.forEach((songs, index) => {
+		songs.forEach(song => {
+			const album = JSON.parse(JSON.stringify(discogsAlbum.value));
+			album.track = album.tracks[index];
+			delete album.tracks;
+			delete album.expanded;
+			delete album.gotMoreInfo;
+
+			const songToEdit = <
+				{
+					youtubeId: string;
+					prefill: {
+						discogs: typeof album;
+						title?: string;
+						thumbnail?: string;
+						genres?: string[];
+						artists?: string[];
+					};
+				}
+			>{
+				youtubeId: song.youtubeId,
+				prefill: {
+					discogs: album
+				}
+			};
+
+			if (prefillDiscogs.value) {
+				songToEdit.prefill.title = album.track.title;
+				songToEdit.prefill.thumbnail =
+					discogsAlbum.value.album.albumArt;
+				songToEdit.prefill.genres = JSON.parse(
+					JSON.stringify(album.album.genres)
+				);
+				songToEdit.prefill.artists = JSON.parse(
+					JSON.stringify(album.album.artists)
+				);
+			}
+
+			songsToEdit.value.push(songToEdit);
+		});
+	});
+
+	if (songsToEdit.value.length === 0) new Toast("You can't edit 0 songs.");
+	else {
+		openModal({
+			modal: "editSong",
+			data: { songs: songsToEdit.value }
+		});
+	}
+};
+
+const tryToAutoMove = () => {
+	const { tracks } = discogsAlbum.value;
+	const songs = JSON.parse(JSON.stringify(playlistSongs.value));
+
+	tracks.forEach((track, index) => {
+		songs.forEach(playlistSong => {
+			if (
+				playlistSong.title
+					.toLowerCase()
+					.trim()
+					.indexOf(track.title.toLowerCase().trim()) !== -1
+			) {
+				songs.splice(songs.indexOf(playlistSong), 1);
+				trackSongs.value[index].push(playlistSong);
+			}
+		});
+	});
+
+	updatePlaylistSongs(songs);
+};
+
+const importPlaylist = () => {
+	if (isImportingPlaylist.value)
+		return new Toast("A playlist is already importing.");
+	isImportingPlaylist.value = true;
+
+	// import query is blank
+	if (!search.value.playlist.query)
+		return new Toast("Please enter a YouTube playlist URL.");
+
+	const regex = /[\\?&]list=([^&#]*)/;
+	const splitQuery = regex.exec(search.value.playlist.query);
+
+	if (!splitQuery) {
+		return new Toast({
+			content: "Please enter a valid YouTube playlist URL.",
+			timeout: 4000
+		});
+	}
+
+	// don't give starting import message instantly in case of instant error
+	setTimeout(() => {
+		if (isImportingPlaylist.value) {
+			new Toast(
+				"Starting to import your playlist. This can take some time to do."
+			);
+		}
+	}, 750);
+
+	return socket.dispatch(
+		"youtube.requestSet",
+		search.value.playlist.query,
+		false,
+		true,
+		res => {
+			isImportingPlaylist.value = false;
+			const youtubeIds = res.videos.map(video => video.youtubeId);
+
+			socket.dispatch("songs.getSongsFromYoutubeIds", youtubeIds, res => {
+				if (res.status === "success") {
+					const songs = res.data.songs.filter(song => !song.verified);
+					const songsAlreadyVerified =
+						res.data.songs.length - songs.length;
+					setPlaylistSongs(songs);
+					if (discogsAlbum.value.tracks) {
+						trackSongs.value = discogsAlbum.value.tracks.map(
+							() => []
+						);
+						tryToAutoMove();
+					}
+					if (songsAlreadyVerified > 0)
+						new Toast(
+							`${songsAlreadyVerified} songs were already verified, skipping those.`
+						);
+				}
+				new Toast("Could not get songs.");
+			});
+
+			return new Toast({ content: res.message, timeout: 20000 });
+		}
+	);
+};
+
+const resetTrackSongs = () => {
+	resetPlaylistSongs();
+	trackSongs.value = discogsAlbum.value.tracks.map(() => []);
+};
+
+const selectAlbum = result => {
+	selectDiscogsAlbum(result);
+	trackSongs.value = discogsAlbum.value.tracks.map(() => []);
+	if (playlistSongs.value.length > 0) tryToAutoMove();
+	// clearDiscogsResults();
+	showDiscogsTab("selected");
+};
+
+const toggleAPIResult = index => {
+	const apiResult = discogs.value.apiResults[index];
+	if (apiResult.expanded === true) apiResult.expanded = false;
+	else if (apiResult.gotMoreInfo === true) apiResult.expanded = true;
+	else {
+		fetch(apiResult.album.resourceUrl)
+			.then(response => response.json())
+			.then(data => {
+				apiResult.album.artists = [];
+				apiResult.album.artistIds = [];
+				const artistRegex = /\\([0-9]+\\)$/;
+
+				apiResult.dataQuality = data.data_quality;
+				data.artists.forEach(artist => {
+					apiResult.album.artists.push(
+						artist.name.replace(artistRegex, "")
+					);
+					apiResult.album.artistIds.push(artist.id);
+				});
+				apiResult.tracks = data.tracklist.map(track => ({
+					position: track.position,
+					title: track.title
+				}));
+				apiResult.expanded = true;
+				apiResult.gotMoreInfo = true;
+			});
+	}
+};
+
+const clearDiscogsResults = () => {
+	discogs.value.apiResults = [];
+	discogs.value.page = 1;
+	discogs.value.pages = 1;
+	discogs.value.disableLoadMore = false;
+};
+
+const searchDiscogsForPage = page => {
+	const query = discogsQuery.value;
+
+	socket.dispatch("apis.searchDiscogs", query, page, res => {
+		if (res.status === "success") {
+			if (page === 1)
+				new Toast(
+					`Successfully searched. Got ${res.data.results.length} results.`
+				);
+			else
+				new Toast(
+					`Successfully got ${res.data.results.length} more results.`
+				);
+
+			if (page === 1) {
+				discogs.value.apiResults = [];
+			}
+
+			discogs.value.pages = res.data.pages;
+
+			discogs.value.apiResults = discogs.value.apiResults.concat(
+				res.data.results.map(result => {
+					const type =
+						result.type.charAt(0).toUpperCase() +
+						result.type.slice(1);
+
+					return {
+						expanded: false,
+						gotMoreInfo: false,
+						album: {
+							id: result.id,
+							title: result.title,
+							type,
+							year: result.year,
+							genres: result.genre,
+							albumArt: result.cover_image,
+							resourceUrl: result.resource_url
+						}
+					};
+				})
+			);
+
+			discogs.value.page = page;
+			discogs.value.disableLoadMore = false;
+		} else new Toast(res.message);
+	});
+};
+
+const loadNextDiscogsPage = () => {
+	discogs.value.disableLoadMore = true;
+	searchDiscogsForPage(discogs.value.page + 1);
+};
+
+const onDiscogsQueryChange = () => {
+	discogs.value.page = 1;
+	discogs.value.pages = 1;
+	discogs.value.apiResults = [];
+	discogs.value.disableLoadMore = false;
+};
+
+const updateTrackSong = updatedSong => {
+	updatePlaylistSong(updatedSong);
+	trackSongs.value.forEach((songs, indexA) => {
+		songs.forEach((song, indexB) => {
+			if (song._id === updatedSong._id)
+				trackSongs.value[indexA][indexB] = updatedSong;
+		});
+	});
+};
+
+const updatePlaylistSongPosition = ({ oldIndex, newIndex }) => {
+	if (oldIndex === newIndex) return;
+	const oldSongs = playlistSongs.value;
+	oldSongs.splice(newIndex, 0, oldSongs.splice(oldIndex, 1)[0]);
+	playlistSongs.value = oldSongs;
+};
+
+const updateTrackSongPosition = (trackIndex, { oldIndex, newIndex }) => {
+	if (oldIndex === newIndex) return;
+	const oldSongs = trackSongs.value[trackIndex];
+	oldSongs.splice(newIndex, 0, oldSongs.splice(oldIndex, 1)[0]);
+	trackSongs.value[trackIndex] = oldSongs;
+};
+
+const playlistSongAdded = event => {
+	const fromTrack = event.from;
+	const fromTrackIndex = Number(fromTrack.dataset.trackIndex);
+	const song = trackSongs.value[fromTrackIndex][event.oldIndex];
+	const newPlaylistSongs = JSON.parse(JSON.stringify(playlistSongs.value));
+	newPlaylistSongs.splice(event.newIndex, 0, song);
+	playlistSongs.value = newPlaylistSongs;
+
+	sortableUpdateNumber.value += 1;
+};
+
+const playlistSongRemoved = event => {
+	playlistSongs.value.splice(event.oldIndex, 1);
+
+	sortableUpdateNumber.value += 1;
+};
+
+const trackSongAdded = (trackIndex, event) => {
+	const fromElement = event.from;
+	let song = null;
+	if (fromElement.dataset.trackIndex) {
+		const fromTrackIndex = Number(fromElement.dataset.trackIndex);
+		song = trackSongs.value[fromTrackIndex][event.oldIndex];
+	} else {
+		song = playlistSongs.value[event.oldIndex];
+	}
+	const newTrackSongs = JSON.parse(
+		JSON.stringify(trackSongs.value[trackIndex])
+	);
+	newTrackSongs.splice(event.newIndex, 0, song);
+	trackSongs.value[trackIndex] = newTrackSongs;
+
+	sortableUpdateNumber.value += 1;
+};
+
+const trackSongRemoved = (trackIndex, event) => {
+	trackSongs.value[trackIndex].splice(event.oldIndex, 1);
+
+	sortableUpdateNumber.value += 1;
+};
+
+onMounted(() => {
+	ws.onConnect(init);
+
+	socket.on("event:admin.song.updated", res => {
+		updateTrackSong(res.data.song);
+	});
+});
+
+onBeforeUnmount(() => {
+	selectDiscogsAlbum({});
+	setPlaylistSongs([]);
+	showDiscogsTab("search");
+	socket.dispatch("apis.leaveRoom", "import-album");
+	// Delete the Pinia store that was created for this modal, after all other cleanup tasks are performed
+	importAlbumStore.$dispose();
+});
+</script>
+
 <template>
 	<div>
 		<modal title="Import Album" class="import-album-modal">
@@ -7,7 +415,9 @@
 						<button
 							class="button is-default"
 							:class="{ selected: discogsTab === 'search' }"
-							ref="discogs-search-tab"
+							:ref="
+								el => (discogsTabs['discogs-search-tab'] = el)
+							"
 							@click="showDiscogsTab('search')"
 						>
 							Search
@@ -16,7 +426,9 @@
 							v-if="discogsAlbum && discogsAlbum.album"
 							class="button is-default"
 							:class="{ selected: discogsTab === 'selected' }"
-							ref="discogs-selected-tab"
+							:ref="
+								el => (discogsTabs['discogs-selected-tab'] = el)
+							"
 							@click="showDiscogsTab('selected')"
 						>
 							Selected
@@ -39,7 +451,6 @@
 							<input
 								class="input"
 								type="text"
-								ref="discogs-input"
 								v-model="discogsQuery"
 								@keyup.enter="searchDiscogsForPage(1)"
 								@change="onDiscogsQueryChange"
@@ -246,14 +657,15 @@
 					>
 						Reset
 					</button>
-					<draggable
+					<sortable
+						:key="`${sortableUpdateNumber}-playlistSongs`"
 						v-if="playlistSongs.length > 0"
-						group="songs"
-						v-model="playlistSongs"
+						:list="playlistSongs"
 						item-key="_id"
-						@start="drag = true"
-						@end="drag = false"
-						@change="log"
+						:options="{ group: 'songs' }"
+						@update="updatePlaylistSongPosition"
+						@add="playlistSongAdded"
+						@remove="playlistSongRemoved"
 					>
 						<template #item="{ element }">
 							<song-item
@@ -262,7 +674,7 @@
 							>
 							</song-item>
 						</template>
-					</draggable>
+					</sortable>
 				</div>
 				<div
 					class="track-boxes"
@@ -277,14 +689,16 @@
 							<span>{{ track.position }}.</span>
 							<p>{{ track.title }}</p>
 						</div>
-						<draggable
+						<sortable
+							:key="`${sortableUpdateNumber}-${index}-playlistSongs`"
 							class="track-box-songs-drag-area"
-							group="songs"
-							v-model="trackSongs[index]"
+							:list="trackSongs[index]"
+							:data-track-index="index"
 							item-key="_id"
-							@start="drag = true"
-							@end="drag = false"
-							@change="log"
+							:options="{ group: 'songs' }"
+							@update="updateTrackSongPosition(index, $event)"
+							@add="trackSongAdded(index, $event)"
+							@remove="trackSongRemoved(index, $event)"
 						>
 							<template #item="{ element }">
 								<song-item
@@ -293,7 +707,7 @@
 								>
 								</song-item>
 							</template>
-						</draggable>
+						</sortable>
 					</div>
 				</div>
 			</template>
@@ -322,373 +736,6 @@
 		</modal>
 	</div>
 </template>
-
-<script>
-import { mapGetters, mapActions } from "vuex";
-
-import draggable from "vuedraggable";
-import Toast from "toasters";
-import ws from "@/ws";
-import { mapModalState, mapModalActions } from "@/vuex_helpers";
-
-import SongItem from "../SongItem.vue";
-
-export default {
-	components: { SongItem, draggable },
-	props: {
-		modalUuid: { type: String, default: "" }
-	},
-	data() {
-		return {
-			isImportingPlaylist: false,
-			trackSongs: [],
-			songsToEdit: [],
-			// currentEditSongIndex: 0,
-			search: {
-				playlist: {
-					query: ""
-				}
-			},
-			discogsQuery: "",
-			discogs: {
-				apiResults: [],
-				page: 1,
-				pages: 1,
-				disableLoadMore: false
-			}
-		};
-	},
-	computed: {
-		playlistSongs: {
-			get() {
-				return this.$store.state.modals.importAlbum[this.modalUuid]
-					.playlistSongs;
-			},
-			set(playlistSongs) {
-				this.$store.commit(
-					`modals/importAlbum/${this.modalUuid}/updatePlaylistSongs`,
-					playlistSongs
-				);
-			}
-		},
-		localPrefillDiscogs: {
-			get() {
-				return this.$store.state.modals.importAlbum[this.modalUuid]
-					.prefillDiscogs;
-			},
-			set(prefillDiscogs) {
-				this.$store.commit(
-					`modals/importAlbum/${this.modalUuid}/updatePrefillDiscogs`,
-					prefillDiscogs
-				);
-			}
-		},
-		...mapModalState("modals/importAlbum/MODAL_UUID", {
-			discogsTab: state => state.discogsTab,
-			discogsAlbum: state => state.discogsAlbum,
-			editingSongs: state => state.editingSongs,
-			prefillDiscogs: state => state.prefillDiscogs
-		}),
-		...mapGetters({
-			socket: "websockets/getSocket"
-		})
-	},
-	mounted() {
-		ws.onConnect(this.init);
-
-		this.socket.on("event:admin.song.updated", res => {
-			this.updateTrackSong(res.data.song);
-		});
-	},
-	beforeUnmount() {
-		this.selectDiscogsAlbum({});
-		this.setPlaylistSongs([]);
-		this.showDiscogsTab("search");
-		this.socket.dispatch("apis.leaveRoom", "import-album");
-		// Delete the VueX module that was created for this modal, after all other cleanup tasks are performed
-		this.$store.unregisterModule(["modals", "importAlbum", this.modalUuid]);
-	},
-	methods: {
-		init() {
-			this.socket.dispatch("apis.joinRoom", "import-album");
-		},
-		startEditingSongs() {
-			this.songsToEdit = [];
-			this.trackSongs.forEach((songs, index) => {
-				songs.forEach(song => {
-					const discogsAlbum = JSON.parse(
-						JSON.stringify(this.discogsAlbum)
-					);
-					discogsAlbum.track = discogsAlbum.tracks[index];
-					delete discogsAlbum.tracks;
-					delete discogsAlbum.expanded;
-					delete discogsAlbum.gotMoreInfo;
-
-					const songToEdit = {
-						youtubeId: song.youtubeId,
-						prefill: {
-							discogs: discogsAlbum
-						}
-					};
-
-					if (this.prefillDiscogs) {
-						songToEdit.prefill.title = discogsAlbum.track.title;
-						songToEdit.prefill.thumbnail =
-							discogsAlbum.album.albumArt;
-						songToEdit.prefill.genres = JSON.parse(
-							JSON.stringify(discogsAlbum.album.genres)
-						);
-						songToEdit.prefill.artists = JSON.parse(
-							JSON.stringify(discogsAlbum.album.artists)
-						);
-					}
-
-					this.songsToEdit.push(songToEdit);
-				});
-			});
-
-			if (this.songsToEdit.length === 0)
-				new Toast("You can't edit 0 songs.");
-			else {
-				this.openModal({
-					modal: "editSongs",
-					data: { songs: this.songsToEdit }
-				});
-			}
-		},
-		log(evt) {
-			window.console.log(evt);
-		},
-		importPlaylist() {
-			if (this.isImportingPlaylist)
-				return new Toast("A playlist is already importing.");
-			this.isImportingPlaylist = true;
-
-			// import query is blank
-			if (!this.search.playlist.query)
-				return new Toast("Please enter a YouTube playlist URL.");
-
-			const regex = /[\\?&]list=([^&#]*)/;
-			const splitQuery = regex.exec(this.search.playlist.query);
-
-			if (!splitQuery) {
-				return new Toast({
-					content: "Please enter a valid YouTube playlist URL.",
-					timeout: 4000
-				});
-			}
-
-			// don't give starting import message instantly in case of instant error
-			setTimeout(() => {
-				if (this.isImportingPlaylist) {
-					new Toast(
-						"Starting to import your playlist. This can take some time to do."
-					);
-				}
-			}, 750);
-
-			return this.socket.dispatch(
-				"youtube.requestSet",
-				this.search.playlist.query,
-				false,
-				true,
-				res => {
-					this.isImportingPlaylist = false;
-					const youtubeIds = res.videos.map(video => video.youtubeId);
-
-					this.socket.dispatch(
-						"songs.getSongsFromYoutubeIds",
-						youtubeIds,
-						res => {
-							if (res.status === "success") {
-								const songs = res.data.songs.filter(
-									song => !song.verified
-								);
-								const songsAlreadyVerified =
-									res.data.songs.length - songs.length;
-								this.setPlaylistSongs(songs);
-								if (this.discogsAlbum.tracks) {
-									this.trackSongs =
-										this.discogsAlbum.tracks.map(() => []);
-									this.tryToAutoMove();
-								}
-								if (songsAlreadyVerified > 0)
-									new Toast(
-										`${songsAlreadyVerified} songs were already verified, skipping those.`
-									);
-							}
-							new Toast("Could not get songs.");
-						}
-					);
-
-					return new Toast({ content: res.message, timeout: 20000 });
-				}
-			);
-		},
-		tryToAutoMove() {
-			const { tracks } = this.discogsAlbum;
-			const { trackSongs } = this;
-			const playlistSongs = JSON.parse(
-				JSON.stringify(this.playlistSongs)
-			);
-
-			tracks.forEach((track, index) => {
-				playlistSongs.forEach(playlistSong => {
-					if (
-						playlistSong.title
-							.toLowerCase()
-							.trim()
-							.indexOf(track.title.toLowerCase().trim()) !== -1
-					) {
-						playlistSongs.splice(
-							playlistSongs.indexOf(playlistSong),
-							1
-						);
-						trackSongs[index].push(playlistSong);
-					}
-				});
-			});
-
-			this.updatePlaylistSongs(playlistSongs);
-		},
-		resetTrackSongs() {
-			this.resetPlaylistSongs();
-			this.trackSongs = this.discogsAlbum.tracks.map(() => []);
-		},
-		selectAlbum(result) {
-			this.selectDiscogsAlbum(result);
-			this.trackSongs = this.discogsAlbum.tracks.map(() => []);
-			if (this.playlistSongs.length > 0) this.tryToAutoMove();
-			// this.clearDiscogsResults();
-			this.showDiscogsTab("selected");
-		},
-		toggleAPIResult(index) {
-			const apiResult = this.discogs.apiResults[index];
-			if (apiResult.expanded === true) apiResult.expanded = false;
-			else if (apiResult.gotMoreInfo === true) apiResult.expanded = true;
-			else {
-				fetch(apiResult.album.resourceUrl)
-					.then(response => response.json())
-					.then(data => {
-						apiResult.album.artists = [];
-						apiResult.album.artistIds = [];
-						const artistRegex = /\\([0-9]+\\)$/;
-
-						apiResult.dataQuality = data.data_quality;
-						data.artists.forEach(artist => {
-							apiResult.album.artists.push(
-								artist.name.replace(artistRegex, "")
-							);
-							apiResult.album.artistIds.push(artist.id);
-						});
-						apiResult.tracks = data.tracklist.map(track => ({
-							position: track.position,
-							title: track.title
-						}));
-						apiResult.expanded = true;
-						apiResult.gotMoreInfo = true;
-					});
-			}
-		},
-		clearDiscogsResults() {
-			this.discogs.apiResults = [];
-			this.discogs.page = 1;
-			this.discogs.pages = 1;
-			this.discogs.disableLoadMore = false;
-		},
-		searchDiscogsForPage(page) {
-			const query = this.discogsQuery;
-
-			this.socket.dispatch("apis.searchDiscogs", query, page, res => {
-				if (res.status === "success") {
-					if (page === 1)
-						new Toast(
-							`Successfully searched. Got ${res.data.results.length} results.`
-						);
-					else
-						new Toast(
-							`Successfully got ${res.data.results.length} more results.`
-						);
-
-					if (page === 1) {
-						this.discogs.apiResults = [];
-					}
-
-					this.discogs.pages = res.data.pages;
-
-					this.discogs.apiResults = this.discogs.apiResults.concat(
-						res.data.results.map(result => {
-							const type =
-								result.type.charAt(0).toUpperCase() +
-								result.type.slice(1);
-
-							return {
-								expanded: false,
-								gotMoreInfo: false,
-								album: {
-									id: result.id,
-									title: result.title,
-									type,
-									year: result.year,
-									genres: result.genre,
-									albumArt: result.cover_image,
-									resourceUrl: result.resource_url
-								}
-							};
-						})
-					);
-
-					this.discogs.page = page;
-					this.discogs.disableLoadMore = false;
-				} else new Toast(res.message);
-			});
-		},
-		loadNextDiscogsPage() {
-			this.discogs.disableLoadMore = true;
-			this.searchDiscogsForPage(this.discogs.page + 1);
-		},
-		onDiscogsQueryChange() {
-			this.discogs.page = 1;
-			this.discogs.pages = 1;
-			this.discogs.apiResults = [];
-			this.discogs.disableLoadMore = false;
-		},
-		updateTrackSong(updatedSong) {
-			this.updatePlaylistSong(updatedSong);
-			this.trackSongs.forEach((songs, indexA) => {
-				songs.forEach((song, indexB) => {
-					if (song._id === updatedSong._id)
-						this.trackSongs[indexA][indexB] = updatedSong;
-				});
-			});
-		},
-		...mapActions({
-			showDiscogsTab(dispatch, payload) {
-				if (this.$refs[`discogs-${payload}-tab`])
-					this.$refs[`discogs-${payload}-tab`].scrollIntoView({
-						block: "nearest"
-					});
-				return dispatch(
-					`modals/importAlbum/${this.modalUuid}/showDiscogsTab`,
-					payload
-				);
-			}
-		}),
-		...mapModalActions("modals/importAlbum/MODAL_UUID", [
-			"toggleDiscogsAlbum",
-			"setPlaylistSongs",
-			"updatePlaylistSongs",
-			"selectDiscogsAlbum",
-			"updateEditingSongs",
-			"resetPlaylistSongs",
-			"togglePrefillDiscogs",
-			"updatePlaylistSong"
-		]),
-		...mapActions("modals/editSongs", ["editSongs"]),
-		...mapActions("modalVisibility", ["closeModal", "openModal"])
-	}
-};
-</script>
 
 <style lang="less">
 .night-mode {
