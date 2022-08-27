@@ -139,7 +139,7 @@ application within the container is listening on `21017`.
 ## Docker-compose override
 
 You may want to override the docker-compose files in some specific cases.
-For this, you can create a `docker-compose.override.yml` file.  
+For this, you can create a `docker-compose.override.yml` file.
 
 ### Run backend on its own domain
 

@@ -611,6 +611,7 @@ body {
 
 #root {
 	height: 100%;
+	max-width: 100%;
 }
 
 .content-wrapper {
@@ -782,6 +783,7 @@ textarea {
 
 .upper-container {
 	height: 100%;
+	max-width: 100%;
 }
 
 .main-container {
@@ -789,6 +791,7 @@ textarea {
 	min-height: 100vh;
 	display: flex;
 	flex-direction: column;
+	max-width: 100%;
 
 	&.main-container-modal-active {
 		height: 100% !important;
