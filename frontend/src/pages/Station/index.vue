@@ -1736,7 +1736,11 @@ onBeforeUnmount(() => {
 									</button>
 									<!-- (Admin) Pause/Resume Button -->
 									<quick-confirm
-										v-if="isOwnerOrAdmin() && stationPaused"
+										v-if="
+											hasPermission(
+												'stations.playback.toggle'
+											) && stationPaused
+										"
 										@confirm="resumeStation()"
 									>
 										<button
@@ -1751,7 +1755,9 @@ onBeforeUnmount(() => {
 									</quick-confirm>
 									<quick-confirm
 										v-if="
-											isOwnerOrAdmin() && !stationPaused
+											hasPermission(
+												'stations.playback.toggle'
+											) && !stationPaused
 										"
 										@confirm="pauseStation()"
 									>
@@ -1812,7 +1818,7 @@ onBeforeUnmount(() => {
 
 									<!-- (Admin) Skip Button -->
 									<quick-confirm
-										v-if="isOwnerOrAdmin()"
+										v-if="hasPermission('stations.skip')"
 										@confirm="skipStation()"
 									>
 										<button
