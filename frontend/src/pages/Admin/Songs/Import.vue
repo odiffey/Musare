@@ -5,7 +5,9 @@ import Toast from "toasters";
 import { useWebsocketsStore } from "@/stores/websockets";
 import { useLongJobsStore } from "@/stores/longJobs";
 import { useModalsStore } from "@/stores/modals";
+import { useUserAuthStore } from "@/stores/userAuth";
 import { TableColumn, TableFilter, TableEvents } from "@/types/advancedTable";
+import utils from "@/utils";
 
 const AdvancedTable = defineAsyncComponent(
 	() => import("@/components/AdvancedTable.vue")
@@ -27,7 +29,7 @@ const createImport = ref({
 	youtubeUrl: "",
 	isImportingOnlyMusic: false
 });
-const columnDefault = ref(<TableColumn>{
+const columnDefault = ref<TableColumn>({
 	sortable: true,
 	hidable: true,
 	defaultVisibility: "shown",
@@ -36,7 +38,7 @@ const columnDefault = ref(<TableColumn>{
 	minWidth: 200,
 	maxWidth: 600
 });
-const columns = ref(<TableColumn[]>[
+const columns = ref<TableColumn[]>([
 	{
 		name: "options",
 		displayName: "Options",
@@ -122,7 +124,7 @@ const columns = ref(<TableColumn[]>[
 		defaultVisibility: "hidden"
 	}
 ]);
-const filters = ref(<TableFilter[]>[
+const filters = ref<TableFilter[]>([
 	{
 		name: "_id",
 		displayName: "Import ID",
@@ -229,7 +231,7 @@ const filters = ref(<TableFilter[]>[
 		]
 	}
 ]);
-const events = ref(<TableEvents>{
+const events = ref<TableEvents>({
 	adminRoom: "import",
 	updated: {
 		event: "admin.importJob.updated",
@@ -245,6 +247,8 @@ const events = ref(<TableEvents>{
 const { openModal } = useModalsStore();
 
 const { setJob } = useLongJobsStore();
+
+const { hasPermission } = useUserAuthStore();
 
 const openAdvancedTable = importJob => {
 	const filter = {
@@ -336,21 +340,11 @@ const submitCreateImport = stage => {
 // 	if (stage === 2) createImport.value.stage = 1;
 // };
 
-const getDateFormatted = createdAt => {
-	const date = new Date(createdAt);
-	const year = date.getFullYear();
-	const month = `${date.getMonth() + 1}`.padStart(2, "0");
-	const day = `${date.getDate()}`.padStart(2, "0");
-	const hour = `${date.getHours()}`.padStart(2, "0");
-	const minute = `${date.getMinutes()}`.padStart(2, "0");
-	return `${year}-${month}-${day} ${hour}:${minute}`;
-};
-
 const editSongs = videos => {
 	const songs = videos.map(youtubeId => ({ youtubeId }));
 	if (songs.length === 1)
-		openModal({ modal: "editSong", data: { song: songs[0] } });
-	else openModal({ modal: "editSong", data: { songs } });
+		openModal({ modal: "editSong", props: { song: songs[0] } });
+	else openModal({ modal: "editSong", props: { songs } });
 };
 
 const importAlbum = youtubeIds => {
@@ -358,7 +352,7 @@ const importAlbum = youtubeIds => {
 		if (res.status === "success") {
 			openModal({
 				modal: "importAlbum",
-				data: { songs: res.data.songs }
+				props: { songs: res.data.songs }
 			});
 		} else new Toast("Could not get songs.");
 	});
@@ -367,25 +361,6 @@ const importAlbum = youtubeIds => {
 const removeImportJob = jobId => {
 	socket.dispatch("media.removeImportJobs", jobId, res => {
 		new Toast(res.message);
-	});
-};
-
-const handleConfirmed = ({ action, params }) => {
-	if (typeof action === "function") {
-		if (params) action(params);
-		else action();
-	}
-};
-
-const confirmAction = ({ message, action, params }) => {
-	openModal({
-		modal: "confirm",
-		data: {
-			message,
-			action,
-			params,
-			onCompleted: handleConfirmed
-		}
 	});
 };
 </script>
@@ -510,6 +485,11 @@ const confirmAction = ({ message, action, params }) => {
 						<template #column-options="slotProps">
 							<div class="row-options">
 								<button
+									v-if="
+										hasPermission(
+											'admin.view.youtubeVideos'
+										)
+									"
 									class="button is-primary icon-with-button material-icons"
 									@click="openAdvancedTable(slotProps.item)"
 									:disabled="
@@ -522,6 +502,7 @@ const confirmAction = ({ message, action, params }) => {
 									table_view
 								</button>
 								<button
+									v-if="hasPermission('songs.update')"
 									class="button is-primary icon-with-button material-icons"
 									@click="
 										editSongs(
@@ -539,6 +520,10 @@ const confirmAction = ({ message, action, params }) => {
 									music_note
 								</button>
 								<button
+									v-if="
+										hasPermission('songs.update') &&
+										hasPermission('apis.searchDiscogs')
+									"
 									class="button icon-with-button material-icons import-album-icon"
 									@click="
 										importAlbum(
@@ -556,13 +541,21 @@ const confirmAction = ({ message, action, params }) => {
 									album
 								</button>
 								<button
+									v-if="
+										hasPermission('media.removeImportJobs')
+									"
 									class="button is-danger icon-with-button material-icons"
 									@click.prevent="
-										confirmAction({
-											message:
-												'Note: Removing an import will not remove any videos or songs.',
-											action: removeImportJob,
-											params: slotProps.item._id
+										openModal({
+											modal: 'confirm',
+											props: {
+												message:
+													'Note: Removing an import will not remove any videos or songs.',
+												onCompleted: () =>
+													removeImportJob(
+														slotProps.item._id
+													)
+											}
 										})
 									"
 									:disabled="
@@ -592,7 +585,9 @@ const confirmAction = ({ message, action, params }) => {
 									).toString()
 								"
 								>{{
-									getDateFormatted(slotProps.item.requestedAt)
+									utils.getDateFormatted(
+										slotProps.item.requestedAt
+									)
 								}}</span
 							>
 						</template>

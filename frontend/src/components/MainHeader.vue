@@ -32,8 +32,8 @@ const windowWidth = ref(0);
 
 const { socket } = useWebsocketsStore();
 
-const { loggedIn, username, role } = storeToRefs(userAuthStore);
-const { logout } = userAuthStore;
+const { loggedIn, username } = storeToRefs(userAuthStore);
+const { logout, hasPermission } = userAuthStore;
 const { changeNightmode } = useUserPreferencesStore();
 
 const { openModal } = useModalsStore();
@@ -65,8 +65,7 @@ watch(localNightmode, nightmode => {
 });
 
 onMounted(async () => {
-	localNightmode.value = JSON.parse(localStorage.getItem("nightmode"));
-	if (localNightmode.value === null) localNightmode.value = false;
+	localNightmode.value = localStorage.getItem("nightmode") === "true";
 
 	frontendDomain.value = await lofig.get("frontendDomain");
 	siteSettings.value = await lofig.get("siteSettings");
@@ -129,7 +128,7 @@ onMounted(async () => {
 			</div>
 			<span v-if="loggedIn" class="grouped">
 				<router-link
-					v-if="role === 'admin'"
+					v-if="hasPermission('admin.view')"
 					class="nav-item admin"
 					to="/admin"
 				>

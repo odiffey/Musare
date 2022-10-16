@@ -47,7 +47,8 @@ const hoveredTippy = ref(false);
 const songActions = ref(null);
 
 const userAuthStore = useUserAuthStore();
-const { loggedIn, role: userRole } = storeToRefs(userAuthStore);
+const { loggedIn } = storeToRefs(userAuthStore);
+const { hasPermission } = userAuthStore;
 
 const { openModal } = useModalsStore();
 
@@ -92,14 +93,14 @@ const hoverTippy = () => {
 
 const report = song => {
 	hideTippyElements();
-	openModal({ modal: "report", data: { song } });
+	openModal({ modal: "report", props: { song } });
 };
 
 const edit = song => {
 	hideTippyElements();
 	openModal({
 		modal: "editSong",
-		data: { song }
+		props: { song }
 	});
 };
 
@@ -203,7 +204,7 @@ onUnmounted(() => {
 								@click="
 									openModal({
 										modal: 'viewYoutubeVideo',
-										data: {
+										props: {
 											youtubeId: song.youtubeId
 										}
 									})
@@ -246,7 +247,7 @@ onUnmounted(() => {
 								v-if="
 									loggedIn &&
 									song._id &&
-									userRole === 'admin' &&
+									hasPermission('songs.update') &&
 									disabledActions.indexOf('edit') === -1
 								"
 								class="material-icons edit-icon"
