@@ -568,6 +568,7 @@ body {
 	color: var(--dark-grey);
 	line-height: 1.4285714;
 	font-size: 1rem;
+	font-family: Nunito, Arial, sans-serif;
 	height: 100%;
 	max-width: 100%;
 	overflow-y: auto !important;
