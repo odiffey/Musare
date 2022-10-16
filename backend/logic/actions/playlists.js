@@ -2733,47 +2733,48 @@ export default {
 	clearAndRefillArtistPlaylist: useHasPermission(
 		"playlists.clearAndRefill",
 		async function index(session, playlistId, cb) {
-		async.waterfall(
-			[
-				next => {
-					if (!playlistId) next("Please specify a playlist id");
-					else {
-						PlaylistsModule.runJob("CLEAR_AND_REFILL_ARTIST_PLAYLIST", { playlistId }, this)
-							.then(() => {
-								next();
-							})
-							.catch(err => {
-								next(err);
-							});
+			async.waterfall(
+				[
+					next => {
+						if (!playlistId) next("Please specify a playlist id");
+						else {
+							PlaylistsModule.runJob("CLEAR_AND_REFILL_ARTIST_PLAYLIST", { playlistId }, this)
+								.then(() => {
+									next();
+								})
+								.catch(err => {
+									next(err);
+								});
+						}
 					}
-				}
-			],
-			async err => {
-				if (err) {
-					err = await UtilsModule.runJob("GET_ERROR", { error: err }, this);
+				],
+				async err => {
+					if (err) {
+						err = await UtilsModule.runJob("GET_ERROR", { error: err }, this);
+
+						this.log(
+							"ERROR",
+							"PLAYLIST_CLEAR_AND_REFILL_ARTIST_PLAYLIST",
+							`Clearing and refilling artist playlist "${playlistId}" failed for user "${session.userId}". "${err}"`
+						);
+
+						return cb({ status: "error", message: err });
+					}
 
 					this.log(
-						"ERROR",
+						"SUCCESS",
 						"PLAYLIST_CLEAR_AND_REFILL_ARTIST_PLAYLIST",
-						`Clearing and refilling artist playlist "${playlistId}" failed for user "${session.userId}". "${err}"`
+						`Successfully cleared and refilled artist playlist "${playlistId}" for user "${session.userId}".`
 					);
 
-					return cb({ status: "error", message: err });
+					return cb({
+						status: "success",
+						message: "Playlist has been successfully cleared and refilled"
+					});
 				}
-
-				this.log(
-					"SUCCESS",
-					"PLAYLIST_CLEAR_AND_REFILL_ARTIST_PLAYLIST",
-					`Successfully cleared and refilled artist playlist "${playlistId}" for user "${session.userId}".`
-				);
-
-				return cb({
-					status: "success",
-					message: "Playlist has been successfully cleared and refilled"
-				});
-			}
-		);
-	}),
+			);
+		}
+	),
 
 	/**
 	 * Clears and refills all station playlists
@@ -2972,111 +2973,114 @@ export default {
 	 * @param {object} session - the session object automatically added by socket.io
 	 * @param {Function} cb - gets called with the result
 	 */
-	clearAndRefillAllArtistPlaylists: useHasPermission("playlists.clearAndRefillAll", async function index(session, cb) {
-		this.keepLongJob();
-		this.publishProgress({
-			status: "started",
-			title: "Clear and refill all artist playlists",
-			message: "Clearing and refilling all artist playlists.",
-			id: this.toString()
-		});
-		await CacheModule.runJob("RPUSH", { key: `longJobs.${session.userId}`, value: this.toString() }, this);
-		await CacheModule.runJob(
-			"PUB",
-			{
-				channel: "longJob.added",
-				value: { jobId: this.toString(), userId: session.userId }
-			},
-			this
-		);
-
-		async.waterfall(
-			[
-				next => {
-					PlaylistsModule.runJob("GET_ALL_ARTIST_PLAYLISTS", {}, this)
-						.then(response => {
-							next(null, response.playlists);
-						})
-						.catch(err => {
-							next(err);
-						});
+	clearAndRefillAllArtistPlaylists: useHasPermission(
+		"playlists.clearAndRefillAll",
+		async function index(session, cb) {
+			this.keepLongJob();
+			this.publishProgress({
+				status: "started",
+				title: "Clear and refill all artist playlists",
+				message: "Clearing and refilling all artist playlists.",
+				id: this.toString()
+			});
+			await CacheModule.runJob("RPUSH", { key: `longJobs.${session.userId}`, value: this.toString() }, this);
+			await CacheModule.runJob(
+				"PUB",
+				{
+					channel: "longJob.added",
+					value: { jobId: this.toString(), userId: session.userId }
 				},
+				this
+			);
 
-				(playlists, next) => {
-					async.eachLimit(
-						playlists,
-						1,
-						(playlist, next) => {
-							this.publishProgress({
-								status: "update",
-								message: `Clearing and refilling "${playlist._id}"`
+			async.waterfall(
+				[
+					next => {
+						PlaylistsModule.runJob("GET_ALL_ARTIST_PLAYLISTS", {}, this)
+							.then(response => {
+								next(null, response.playlists);
+							})
+							.catch(err => {
+								next(err);
 							});
-							PlaylistsModule.runJob(
-								"CLEAR_AND_REFILL_ARTIST_PLAYLIST",
-								{ playlistId: playlist._id },
-								this
-							)
-								.then(() => {
-									next();
-								})
-								.catch(err => {
-									next(err);
+					},
+
+					(playlists, next) => {
+						async.eachLimit(
+							playlists,
+							1,
+							(playlist, next) => {
+								this.publishProgress({
+									status: "update",
+									message: `Clearing and refilling "${playlist._id}"`
 								});
-						},
-						next
-					);
-				}
-				// next => {
-				// 	// PlaylistsModule.runJob("CREATE_MISSING_ARTIST_PLAYLISTS", {}, null)
-				// 	// 	.then()
-				// 	// 	.catch()
-				// 	// 	.finally(() => {
-				// 	// 		SongsModule.runJob("GET_ALL_ARTISTS", {}, null)
-				// 	// 			.then(response => {
-				// 	// 				const { artists } = response;
-				// 	// 				artists.forEach(artist => {
-				// 	// 					PlaylistsModule.runJob("AUTOFILL_ARTIST_PLAYLIST", { artist }, null).then().catch();
-				// 	// 				});
-				// 	// 			})
-				// 	// 			.catch();
-				// 	// 	});
-				// 	PlaylistsModule.runJob("GET_MISSING_ARTIST_PLAYLISTS", {}, this).then(response => {
-				// 		console.log(response);
-				// 	});
-				// }
-			],
-			async err => {
-				if (err) {
-					err = await UtilsModule.runJob("GET_ERROR", { error: err }, this);
+								PlaylistsModule.runJob(
+									"CLEAR_AND_REFILL_ARTIST_PLAYLIST",
+									{ playlistId: playlist._id },
+									this
+								)
+									.then(() => {
+										next();
+									})
+									.catch(err => {
+										next(err);
+									});
+							},
+							next
+						);
+					}
+					// next => {
+					// 	// PlaylistsModule.runJob("CREATE_MISSING_ARTIST_PLAYLISTS", {}, null)
+					// 	// 	.then()
+					// 	// 	.catch()
+					// 	// 	.finally(() => {
+					// 	// 		SongsModule.runJob("GET_ALL_ARTISTS", {}, null)
+					// 	// 			.then(response => {
+					// 	// 				const { artists } = response;
+					// 	// 				artists.forEach(artist => {
+					// 	// 					PlaylistsModule.runJob("AUTOFILL_ARTIST_PLAYLIST", { artist }, null).then().catch();
+					// 	// 				});
+					// 	// 			})
+					// 	// 			.catch();
+					// 	// 	});
+					// 	PlaylistsModule.runJob("GET_MISSING_ARTIST_PLAYLISTS", {}, this).then(response => {
+					// 		console.log(response);
+					// 	});
+					// }
+				],
+				async err => {
+					if (err) {
+						err = await UtilsModule.runJob("GET_ERROR", { error: err }, this);
+
+						this.log(
+							"ERROR",
+							"PLAYLIST_CLEAR_AND_REFILL_ALL_ARTIST_PLAYLISTS",
+							`Clearing and refilling all artist playlists failed for user "${session.userId}". "${err}"`
+						);
+						this.publishProgress({
+							status: "error",
+							message: err
+						});
+						return cb({ status: "error", message: err });
+					}
 
 					this.log(
-						"ERROR",
+						"SUCCESS",
 						"PLAYLIST_CLEAR_AND_REFILL_ALL_ARTIST_PLAYLISTS",
-						`Clearing and refilling all artist playlists failed for user "${session.userId}". "${err}"`
+						`Successfully cleared and refilled all artist playlists for user "${session.userId}".`
 					);
 					this.publishProgress({
-						status: "error",
-						message: err
+						status: "success",
+						message: "Playlists have been successfully cleared and refilled."
 					});
-					return cb({ status: "error", message: err });
+					return cb({
+						status: "success",
+						message: "Playlists have been successfully cleared and refilled"
+					});
 				}
-
-				this.log(
-					"SUCCESS",
-					"PLAYLIST_CLEAR_AND_REFILL_ALL_ARTIST_PLAYLISTS",
-					`Successfully cleared and refilled all artist playlists for user "${session.userId}".`
-				);
-				this.publishProgress({
-					status: "success",
-					message: "Playlists have been successfully cleared and refilled."
-				});
-				return cb({
-					status: "success",
-					message: "Playlists have been successfully cleared and refilled"
-				});
-			}
-		);
-	}),
+			);
+		}
+	),
 
 	/**
 	 * Create missing genre playlists

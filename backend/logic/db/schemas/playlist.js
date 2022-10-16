@@ -18,6 +18,10 @@ export default {
 	createdAt: { type: Date, default: Date.now, required: true },
 	createdFor: { type: String },
 	privacy: { type: String, enum: ["public", "private"], default: "private" },
-	type: { type: String, enum: ["user", "user-liked", "user-disliked", "genre", "artist", "station", "admin"], required: true },
+	type: {
+		type: String,
+		enum: ["user", "user-liked", "user-disliked", "genre", "artist", "station", "admin"],
+		required: true
+	},
 	documentVersion: { type: Number, default: 6, required: true }
 };
