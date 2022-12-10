@@ -1301,8 +1301,13 @@ export default {
 							next(err);
 							return;
 						}
-						SongsModule.runJob("UPDATE_SONGS", { songIds: songsFound });
-						next();
+						SongsModule.runJob("UPDATE_SONGS", { songIds: songsFound }, this)
+							.then(() => {
+								next();
+							})
+							.catch(err => {
+								next(err);
+							});
 					});
 				}
 			],
@@ -1429,8 +1434,13 @@ export default {
 							next(err);
 							return;
 						}
-						SongsModule.runJob("UPDATE_SONGS", { songIds: songsFound });
-						next();
+						SongsModule.runJob("UPDATE_SONGS", { songIds: songsFound })
+							.then(() => {
+								next();
+							})
+							.catch(err => {
+								next(err);
+							});
 					});
 				}
 			],
