@@ -419,7 +419,7 @@ onBeforeUnmount(() => {
 						<draggable-list
 							v-if="playlistSongs.length > 0"
 							v-model:list="playlistSongs"
-							item-key="_id"
+							item-key="youtubeId"
 							@start="drag = true"
 							@end="drag = false"
 							@update="repositionSong"
@@ -435,6 +435,7 @@ onBeforeUnmount(() => {
 											(songItems[`song-item-${index}`] =
 												el)
 									"
+									:key="`playlist-song-${element.youtubeId}`"
 								>
 									<template #tippyActions>
 										<i
